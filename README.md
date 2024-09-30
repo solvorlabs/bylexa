@@ -1,6 +1,8 @@
 # Bylexa (G.O.A.T. - Greatest Of Automated Tasks)
 ## The Large Multi-Action Model for Task Automation
-
+Project Live Links: 
+- https://bylexa-assistant.netlify.app/
+- https://bylexa-user.netlify.app/
 ### Overview
 
 **Bylexa: GOAT** started as a vision to develop an intelligent voice assistant that seamlessly integrates with IoT devices, web services, and even microcontrollers. What began as a simple voice-based assistant has now evolved into a comprehensive, multi-functional platform capable of executing complex tasks across various domains—completely driven by voice commands.
