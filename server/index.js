@@ -12,6 +12,8 @@ require('./db');
 const genAI = new GoogleGenerativeAI(process.env.API_KEY_12607);
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 const projectRoutes = require('./routes/projectRoutes');
+const courseRoutes = require('./src/course-crafty/routes/courseRoutes');
+const translationRoutes = require('./src/course-crafty/routes/translationRoutes');
 const commandRoutes = require('./routes/commandRoutes');
 
 let currentCommand = ""; // This will store the latest command sent via /send-command
@@ -55,6 +57,8 @@ app.post('/send-command', async (req, res) => {
 // Routes
 app.use('/api/projects', projectRoutes);
 app.use('/api/commands', commandRoutes);
+app.use('/api/courses', courseRoutes);
+app.use('/api/translations', translationRoutes);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
