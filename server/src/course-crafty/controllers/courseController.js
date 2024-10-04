@@ -1,4 +1,4 @@
-const Course = require('../models/courseModel');
+const Course = require('../models/Course');
 const aiService = require('../services/aiService');
 
 exports.createCourse = async (req, res) => {
@@ -12,22 +12,39 @@ exports.createCourse = async (req, res) => {
   }
 };
 
-exports.generateLecture = async (req, res) => {
+exports.generateCourseContent = async (req, res) => {
   try {
-    const { courseId, lectureTitle, lectureContent } = req.body;
-    
+    const { courseId } = req.params;
     const course = await Course.findById(courseId);
-    if (!course) return res.status(404).json({ error: 'Course not found' });
 
-    // AI-enhanced content generation (using Gemini)
-    const prompt = `Generate lecture notes based on the content: "${lectureContent}".`;
-    const generatedLectureNotes = await aiService.generateContent(prompt);
+    // Generate content for each lesson
+    for (let lesson of course.lessons) {
+      // Generate lecture notes
+      lesson.lectureNotes = await aiService.generateLectureNotes(lesson.title);
 
-    const lecture = { title: lectureTitle, content: generatedLectureNotes, course: courseId };
-    course.lectures.push(lecture);
+      // Translate content
+      lesson.translatedContent = await aiService.translateContent(
+        lesson.lectureNotes,
+        course.language
+      );
+
+      // Add images
+      lesson.images = await aiService.generateImages(lesson.title);
+
+      // Add voiceovers
+      lesson.voiceovers = await aiService.generateVoiceover(
+        lesson.translatedContent,
+        course.language
+      );
+
+      // Add animations (placeholder)
+      lesson.animations = []; // Implement as needed
+    }
+
     await course.save();
-    res.status(201).json({ lecture });
+    res.status(200).json(course);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to generate lecture' });
+    console.error('Error generating course content:', error);
+    res.status(500).json({ error: 'Failed to generate course content' });
   }
 };

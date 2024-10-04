@@ -1,5 +1,4 @@
 const aiService = require('../services/aiService');
-const Course = require('../models/courseModel');
 
 exports.translateCourse = async (req, res) => {
   try {
