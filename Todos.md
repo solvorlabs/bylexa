@@ -6,3 +6,4 @@
 ## Tasks (29-09-24)
 - make it constantly listening and processing
 - make the genai model to execute the function in levels such taht if the command has parameters then go through the given prompt again and fill the probable answer in those parameters and return them with comma.
+-handle harcoded function parameters like : function controlMotor(action, speed = 0)

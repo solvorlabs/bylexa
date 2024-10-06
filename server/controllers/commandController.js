@@ -1,9 +1,9 @@
 const Command = require('../models/Command');
 
 exports.createCommand = async (req, res) => {
-  const { project, name, description, action } = req.body;
+  const { project, name, description, action, parameters } = req.body;
   try {
-    const command = new Command({ project, name, description, action });
+    const command = new Command({ project, name, description, action, parameters });
     await command.save();
     res.status(201).json(command);
   } catch (error) {
@@ -23,11 +23,11 @@ exports.getCommandsByProject = async (req, res) => {
 
 exports.updateCommand = async (req, res) => {
   const { commandId } = req.params;
-  const { name, description, action } = req.body;
+  const { name, description, action, parameters } = req.body;
   try {
     const command = await Command.findByIdAndUpdate(
       commandId,
-      { name, description, action },
+      { name, description, action, parameters },
       { new: true }
     );
     if (!command) {

@@ -30,6 +30,16 @@
             <h3>Current Command:</h3>
             <p>{{ currentCommand }}</p>
         </div>
+        <!-- Display parameters if they exist -->
+        <div v-if="currentParameters.length > 0">
+            <h4>Parameters:</h4>
+            <ul>
+                <li v-for="(param, index) in currentParameters" :key="index">{{ param }}</li>
+            </ul>
+        </div>
+        <div v-else>
+            <p>No parameters available.</p>
+        </div>
         <!-- Display Current Command and Command List -->
         <div style="text-align: left;" v-if="selectedProject">
             <h2>Project: {{ selectedProject.name }}</h2>
@@ -73,6 +83,7 @@ const selectedProjectId = ref('');
 const selectedProject = ref(null);
 const commands = ref([]);
 const currentCommand = ref('');
+const currentParameters = ref([]);
 
 let recognition = null;
 let speechSynthesis = window.speechSynthesis;
@@ -136,6 +147,7 @@ const fetchCurrentCommand = async () => {
     try {
         const response = await axios.get(`${BASE_URL}/api/projects/${selectedProjectId.value}/current-command`);
         currentCommand.value = response.data.command;
+        currentParameters.value = response.data.parameters; // Store parameters in state
     } catch (err) {
         error.value = 'Error fetching current command.';
         console.error('Error:', err);

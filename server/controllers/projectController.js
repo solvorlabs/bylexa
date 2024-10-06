@@ -17,14 +17,15 @@ exports.parseCode = async (req, res) => {
   const { code } = req.body;
 
   try {
-    // Updated regex to match functions with parameters
-    const functionRegex = /void\s+(\w+)\s*\(([^)]*)\)\s*{/g;
+    // Updated regex to match functions with various parameter formats and whitespace
+    const functionRegex = /(?:void|int|float|double|char|bool)\s+(\w+)\s*\(\s*([^)]+)?\s*\)\s*{/g;
     let match;
     const commands = [];
 
+    // Iterate through all matches found in the code
     while ((match = functionRegex.exec(code)) !== null) {
       const commandName = match[1]; // Function name
-      const paramsString = match[2]; // Parameters as a string
+      const paramsString = match[2] || ''; // Parameters as a string (can be empty)
 
       // Split parameters and trim whitespace
       const paramsArray = paramsString
@@ -37,7 +38,7 @@ exports.parseCode = async (req, res) => {
         name: commandName,
         description: `Executes the ${commandName} function`,
         action: commandName,
-        parameters: paramsArray
+        parameters: paramsArray,
       });
     }
 
@@ -50,6 +51,7 @@ exports.parseCode = async (req, res) => {
     res.status(500).json({ error: 'Failed to parse code and create commands' });
   }
 };
+
 exports.getAllProjects = async (req, res) => {
   try {
     const projects = await Project.find();
@@ -171,9 +173,12 @@ exports.getCurrentCommand = async (req, res) => {
     if (!project) {
       return res.status(404).json({ error: 'Project not found' });
     }
-    
+
     if (project.currentCommand) {
-      res.json({ command: project.currentCommand });
+      res.json({
+        command: project.currentCommand,
+        parameters: project.parameters || [], // Return parameters or an empty array if none
+      });
     } else {
       res.status(400).json({ error: 'No command available' });
     }

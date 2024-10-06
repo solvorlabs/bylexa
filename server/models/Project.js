@@ -13,6 +13,10 @@ const projectSchema = new mongoose.Schema({
   currentCommand: {
     type: String,
     default: null
+  },
+  parameters: {
+    type: [String],
+    default: []
   }
 }, { timestamps: true });
 

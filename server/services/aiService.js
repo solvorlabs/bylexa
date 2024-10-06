@@ -41,7 +41,7 @@ Do not include any additional text.`;
       // Handle mismatch between expected and received parameters
       throw new Error('Mismatch between parameter names and values');
     }
-
+    console.log(parameterValues);
     return parameterValues;
   } catch (error) {
     console.error('Error generating parameter values:', error);

@@ -147,3 +147,148 @@ Given the background of eVTOL (Electric Vertical Take-Off and Landing) and the c
 The winning project from the 7th Edition of TECHgium® focused on creating **AI-based situational awareness and collision avoidance systems** for eVTOLs. Their deliverables likely featured advanced AI and sensing technologies to enable real-time detection and avoidance of obstacles in dynamic environments, critical for safe autonomous operation of eVTOLs in urban air mobility.
 
 Innovations in human-machine interaction, reinforcement learning, and cloud-based predictive analytics could drive future developments, making the solution even more robust for widespread industry adoption.
+
+
+
+Here’s an overview of the **technologies** and **solutions** used in the other winning projects from past editions of TECHgium®, with a focus on their core features and the technologies involved:
+
+---
+
+### **6th Edition (2022-2023)**
+
+#### 1. **Alginate-Based Bioplastic for Food Packaging Application**  
+**Team**: Vishwakarma Institute Of Technology, Pune  
+**Solution Overview**:
+   - **Technology**: The team created a bioplastic made from **alginate**, a biodegradable polymer derived from seaweed, used for food packaging applications.
+   - **Features**:
+     - **Eco-friendly** alternative to plastic with minimal environmental impact.
+     - **Biodegradable** and non-toxic, ensuring safety for food packaging.
+   - **Technology Used**:
+     - **Polymer engineering** and **material science** for creating bioplastics.
+     - **Sustainability-focused innovations** to meet industry standards for food packaging.
+
+#### 2. **Plug-in Kit for Ready Charging**  
+**Team**: Sri Krishna College of Engineering and Technology, Coimbatore  
+**Solution Overview**:
+   - **Technology**: A portable and easy-to-use **plug-in charging kit** for electric vehicles (EVs).
+   - **Features**:
+     - Quick and convenient EV charging.
+     - Compatible with existing infrastructure.
+   - **Technology Used**:
+     - **Electrical engineering** and **power electronics** for the charging system.
+     - **IoT integration** for real-time monitoring of charging sessions.
+
+#### 3. **Electro-mechanical Charging Device for TPMS**  
+**Team**: IIT Guwahati  
+**Solution Overview**:
+   - **Technology**: An electro-mechanical system to **wirelessly charge** Tire Pressure Monitoring Systems (TPMS) in vehicles.
+   - **Features**:
+     - Continuous power supply for TPMS sensors.
+     - **Wireless power transfer** technology for seamless charging.
+   - **Technology Used**:
+     - **Electro-mechanics** and **wireless charging** systems.
+     - Integration of **energy harvesting** technologies to ensure constant power for sensors.
+
+---
+
+### **5th Edition (2021-2022)**
+
+#### 1. **Easy to Attach IoT Crane Box**  
+**Team**: Indian Institute of Information Technology Design & Manufacturing, Jabalpur  
+**Solution Overview**:
+   - **Technology**: A smart **IoT-enabled box** that can be easily attached to cranes to monitor their performance and safety.
+   - **Features**:
+     - **Real-time monitoring** of crane operations.
+     - **Safety alerts** and maintenance notifications.
+   - **Technology Used**:
+     - **IoT sensors** for monitoring crane parameters.
+     - **Data analytics** for predictive maintenance and safety.
+
+#### 2. **Self-Cleaning Solar Panels**  
+**Team**: IIT Roorkee  
+**Solution Overview**:
+   - **Technology**: A self-cleaning mechanism for solar panels, improving energy efficiency by removing dust and debris.
+   - **Features**:
+     - Autonomous **self-cleaning** system using minimal water.
+     - Improved solar energy efficiency.
+   - **Technology Used**:
+     - **Automation** and **robotics** for cleaning mechanisms.
+     - **IoT** integration for remote control and monitoring.
+
+#### 3. **Hover-Drone with Dynamic Charging via Wireless Power Transfer**  
+**Team**: IIT Guwahati  
+**Solution Overview**:
+   - **Technology**: A drone capable of dynamic charging via **wireless power transfer**, extending its operational time.
+   - **Features**:
+     - Continuous operation without landing for charging.
+     - Ideal for surveillance and remote monitoring.
+   - **Technology Used**:
+     - **Wireless power transfer** technology.
+     - **Drone technology** and **automation** for dynamic charging coordination.
+
+---
+
+### **4th Edition (2019-2021)**
+
+#### 1. **Blurring Personal Information in Vehicles**  
+**Team**: Vellore Institute of Technology, Chennai  
+**Solution Overview**:
+   - **Technology**: A **computer vision** system that blurs personal information visible through in-vehicle cameras (e.g., license plates, faces).
+   - **Features**:
+     - **Privacy protection** by automatically blurring sensitive data.
+     - Integration with existing **camera systems** in vehicles.
+   - **Technology Used**:
+     - **OpenCV** and **image processing** for real-time blurring.
+     - **Machine learning** to identify and classify sensitive information.
+
+#### 2. **Energy-Efficient Defrosting Method for Evaporators**  
+**Team**: Sri Ramakrishna Engineering College, Coimbatore  
+**Solution Overview**:
+   - **Technology**: A new **energy-efficient method** for defrosting evaporators in refrigeration systems.
+   - **Features**:
+     - Faster defrosting with lower energy consumption.
+     - Reduced downtime for refrigeration systems.
+   - **Technology Used**:
+     - **Thermodynamics** and **HVAC engineering** for efficient energy use.
+     - **Control systems** for optimized defrost cycles.
+
+#### 3. **Sewage Coagulation using Co-Culture of Bacteria**  
+**Team**: Indian Institute of Science, Bangalore  
+**Solution Overview**:
+   - **Technology**: A biological solution for sewage treatment using **co-cultures of bacteria** to coagulate and clean sewage.
+   - **Features**:
+     - Environmentally friendly sewage treatment.
+     - Use of **bacteria cultures** to naturally treat waste.
+   - **Technology Used**:
+     - **Biotechnology** and **microbial engineering**.
+     - **Water treatment technologies** to enhance coagulation efficiency.
+
+---
+
+### **2nd Edition (2017-2018)**
+
+#### 1. **Wide Angle Viewing Mechanism for Diagnostic Hysteroscopy Products**  
+**Team**: Sri Ramakrishna Engineering College, Coimbatore  
+**Solution Overview**:
+   - **Technology**: A mechanism that provides a **wider field of view** for hysteroscopy (medical diagnostic) devices.
+   - **Features**:
+     - Enhanced visibility for better diagnosis.
+     - Improved precision for medical procedures.
+   - **Technology Used**:
+     - **Optical engineering** and **medical device technology**.
+     - **Mechanical design** for the wide-angle view implementation.
+
+#### 2. **Variable Valve Timing Mechanism for Internal Combustion Engine**  
+**Team**: National Institute of Engineering  
+**Solution Overview**:
+   - **Technology**: A **variable valve timing (VVT) mechanism** that optimizes the performance and efficiency of internal combustion engines.
+   - **Features**:
+     - **Fuel efficiency** improvements.
+     - Enhanced engine power and reduced emissions.
+   - **Technology Used**:
+     - **Mechanical engineering** for VVT implementation.
+     - **Engine control systems** for precise timing adjustments.
+
+---
+
+These winning solutions span diverse industries, applying **AI**, **IoT**, **automation**, **machine learning**, **biotechnology**, and **renewable energy technologies** to solve real-world problems efficiently. Each project harnesses emerging technologies to bring innovation and practical impact to their respective domains.

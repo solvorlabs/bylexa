@@ -2,26 +2,30 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import Config from '../config/Config';
+import { Typography } from '@mui/material';
+import CommandsList from '../sub-components/CommandsList';
+import AddCommandForm from '../sub-components/AddCommandForm';
+import DeleteConfirmationDialog from '../sub-components/DeleteConfirmationDialog';
+import UpdateCommandModal from '../sub-components/UpdateCommandModal';
+import ProjectHeader from '../sub-components/ProjectHeader';
+
 
 const ProjectDetail = () => {
   const { id } = useParams();
   const [project, setProject] = useState(null);
   const [commands, setCommands] = useState([]);
-  const [newCommand, setNewCommand] = useState('');
-  const [isListening, setIsListening] = useState(false);
-
-  // Voice recognition setup
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  const recognition = SpeechRecognition ? new SpeechRecognition() : null;
-
-  recognition.continuous = true;
-  recognition.interimResults = false;
+  const [projectDetails, setProjectDetails] = useState({ name: '', description: '' });
+  const [deleteCommandId, setDeleteCommandId] = useState(null);
+  const [openDeleteModal, setOpenDeleteModal] = useState(false);
+  const [editCommand, setEditCommand] = useState(null);
+  const [openUpdateModal, setOpenUpdateModal] = useState(false);
 
   useEffect(() => {
     const fetchProjectAndCommands = async () => {
       try {
         const projectResponse = await axios.get(`${Config.backendUrl}/api/projects/${id}`);
         setProject(projectResponse.data);
+        setProjectDetails({ name: projectResponse.data.name, description: projectResponse.data.description });
 
         const commandsResponse = await axios.get(`${Config.backendUrl}/api/commands/project/${id}`);
         setCommands(commandsResponse.data);
@@ -32,44 +36,44 @@ const ProjectDetail = () => {
     fetchProjectAndCommands();
   }, [id]);
 
-  const handleExecuteCommand = async () => {
+  const handleUpdateProject = async () => {
     try {
-      const response = await axios.post(`${Config.backendUrl}/api/projects/${id}/execute`, { command: newCommand });
-      alert(`Command executed: ${response.data.action}`);
-      setNewCommand('');
+      await axios.put(`${Config.backendUrl}/api/projects/${id}`, projectDetails);
+      alert('Project updated successfully');
     } catch (error) {
-      console.error('Error executing command:', error);
+      console.error('Error updating project:', error);
     }
   };
 
-  const toggleListening = () => {
-    setIsListening(prevState => !prevState);
-    if (isListening) {
-      recognition.stop();
-    } else {
-      recognition.start();
+  const handleDeleteCommand = async () => {
+    try {
+      await axios.delete(`${Config.backendUrl}/api/commands/${deleteCommandId}`);
+      setCommands(commands.filter(cmd => cmd._id !== deleteCommandId));
+      setOpenDeleteModal(false);
+    } catch (error) {
+      console.error('Error deleting command:', error);
     }
   };
 
-  useEffect(() => {
-    if (recognition) {
-      recognition.onresult = (event) => {
-        const transcript = event.results[event.results.length - 1][0].transcript;
-        setNewCommand(transcript);
-      };
-
-      recognition.onerror = (event) => {
-        console.error('Speech recognition error:', event.error);
-      };
+  const handleUpdateCommand = async (updatedCommand) => {
+    try {
+      const response = await axios.put(`${Config.backendUrl}/api/commands/${updatedCommand._id}`, updatedCommand);
+      setCommands(commands.map(cmd => cmd._id === updatedCommand._id ? response.data : cmd));
+      setEditCommand(null);
+      setOpenUpdateModal(false);
+    } catch (error) {
+      console.error('Error updating command:', error);
     }
+  };
 
-    // Cleanup when component is unmounted
-    return () => {
-      if (recognition) {
-        recognition.stop();
-      }
-    };
-  }, [recognition]);
+  const handleAddCommand = async (newCommand) => {
+    try {
+      const response = await axios.post(`${Config.backendUrl}/api/commands`, { ...newCommand, project: id });
+      setCommands([...commands, response.data]);
+    } catch (error) {
+      console.error('Error adding command:', error);
+    }
+  };
 
   if (!project) {
     return <div className="text-white">Loading...</div>;
@@ -78,70 +82,57 @@ const ProjectDetail = () => {
   return (
     <div className='px-20 text-white bg-gray-900 min-h-screen p-6'>
       {/* Project Header */}
-      <h2 className="text-4xl font-bold mb-6 text-blue-400">{project.name}</h2>
-      <p className="mb-6 text-gray-300">{project.description}</p>
-      <a href={`${Config.assistanturl}`} className="mb-6 text-red-600 hover:underline">Click here to visit the online voice assistant</a>
-      <br />
-      <br />
-      <br />
+      <ProjectHeader
+        projectDetails={projectDetails}
+        setProjectDetails={setProjectDetails}
+        handleUpdateProject={handleUpdateProject}
+      />
+
       {/* Commands Section */}
-      <h3 className="text-2xl font-semibold mb-4">Available Commands:</h3>
-      <ul className="mb-6 space-y-4">
-        {commands.map(command => (
-          <li key={command._id} className="border border-gray-600 p-4 rounded-lg bg-gray-800">
-            <strong className="text-blue-400">{command.name}</strong>: {command.description}
+      <Typography variant="h4" gutterBottom style={{ color: '#00E5FF', textShadow: '0px 0px 8px rgba(0, 229, 255, 1)' }}>
+        Available Commands
+      </Typography>
 
-            {/* Check if the command has parameters */}
-            {command.parameters && command.parameters.length > 0 ? (
-              <div className="mt-2">
-                <p className="text-green-400">Parameters:</p>
-                <ul className="list-disc list-inside">
-                  {command.parameters.map((param, index) => (
-                    <li key={index} className="text-gray-300">{param}</li>
-                  ))}
-                </ul>
-              </div>
-            ) : (
-              <p className="mt-2 text-red-400">No parameters</p>
-            )}
-          </li>
-        ))}
-      </ul>
+      <CommandsList
+        commands={commands}
+        setDeleteCommandId={setDeleteCommandId}
+        setOpenDeleteModal={setOpenDeleteModal}
+        setEditCommand={setEditCommand}
+        setOpenUpdateModal={setOpenUpdateModal}
+      />
 
+      {/* Add Command Section */}
+      <AddCommandForm handleAddCommand={handleAddCommand} />
 
-      {/* Voice Assistant Toggle */}
-      <div className="mb-6">
-        <button
-          onClick={toggleListening}
-          className={`px-6 py-2 rounded-lg ${isListening ? 'bg-red-500' : 'bg-green-500'} text-white`}
-        >
-          {isListening ? 'Stop Listening' : 'Start Listening'}
-        </button>
-      </div>
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationDialog
+        open={openDeleteModal}
+        onClose={() => setOpenDeleteModal(false)}
+        onConfirm={handleDeleteCommand}
+      />
 
-      {/* Text Input and Execute Button */}
-      <div className="mb-6">
-        <input
-          type="text"
-          value={newCommand}
-          onChange={(e) => setNewCommand(e.target.value)}
-          placeholder="Enter a command"
-          className="w-full p-3 border border-gray-700 rounded-lg bg-gray-800 text-gray-200 mb-4"
+      {/* Update Command Modal */}
+      {editCommand && (
+        <UpdateCommandModal
+          open={openUpdateModal}
+          onClose={() => setOpenUpdateModal(false)}
+          command={editCommand}
+          handleUpdateCommand={handleUpdateCommand}
         />
-        <button
-          onClick={handleExecuteCommand}
-          className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600"
-        >
-          Execute Command
-        </button>
-      </div>
+      )}
 
       {/* Microcontroller Integration Section */}
-      <h3 className="text-2xl font-semibold mb-4">Microcontroller Integration:</h3>
-      <p>To integrate this project with your microcontroller, use the following URL:</p>
-      <code className="block bg-gray-800 p-3 rounded-lg text-green-400 mt-4 text-wrap overflow-scroll">
+      <Typography variant="h4" gutterBottom style={{ color: '#00E5FF', textShadow: '0px 0px 8px rgba(0, 229, 255, 1)' }}>
+        Microcontroller Integration
+      </Typography>
+      <Typography variant="body1" style={{ color: '#C6FFDD' }}>
+        To integrate this project with your microcontroller, use the following URL:
+      </Typography>
+      <div
+        style={{ display: 'block', padding: '12px', backgroundColor: '#1C1C1C', borderRadius: '8px', color: '#00E5FF', overflowX: 'auto' }}
+      >
         {`${Config.backendUrl}/api/projects/${id}/current-command`}
-      </code>
+      </div>
     </div>
   );
 };
