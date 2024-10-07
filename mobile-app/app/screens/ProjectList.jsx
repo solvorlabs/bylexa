@@ -30,14 +30,15 @@ const ProjectList = ({ navigation }) => {
   );
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+    <View style={styles.container}>
       <FlatList
         data={projects}
         renderItem={renderProject}
         keyExtractor={item => item._id}
+        contentContainerStyle={styles.listContent}
       />
       <FAB
-        style={[styles.fab]}
+        style={styles.fab}
         icon="plus"
         onPress={() => navigation.navigate('CreateProject')}
       />
@@ -47,7 +48,10 @@ const ProjectList = ({ navigation }) => {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    flex: 1,  // This ensures the FlatList takes up the full available space
+  },
+  listContent: {
+    flexGrow: 1,  // Ensures content can grow and become scrollable
   },
   fab: {
     position: 'absolute',
