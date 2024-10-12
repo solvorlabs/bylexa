@@ -11,7 +11,7 @@ import VoiceAssistant from './components/VoiceAssistant.vue'
       <VoiceAssistant />
     </main>
     <footer>
-      <p>Made by Aman, MAIT Delhi</p>
+      <p>Made by AMAN, MAIT Delhi</p>
     </footer>
   </div>
 </template>

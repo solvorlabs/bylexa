@@ -4,6 +4,7 @@ import ProjectList from './components/ProjectList';
 import ProjectDetail from './components/ProjectDetail';
 import CreateProject from './components/CreateProject';
 import DocumentationPage from './components/DocumentationPage';
+import OsCommander from './components/OsCommander';
 
 const App = () => {
   return (
@@ -13,6 +14,7 @@ const App = () => {
           <ul className="flex justify-between flex-wrap ">
             <li><Link to="/" className="text-blue-500 underline hover:text-blue-700">Projects</Link></li>
             <li><Link to="/create" className="text-blue-500 underline hover:text-blue-700">Create Project</Link></li>
+            <li><Link to="/os-command" className="text-blue-500 underline hover:text-blue-700">OS Commander</Link></li>
             <li><Link to="/documentation" className="text-blue-500 underline hover:text-blue-700">Documentation/Guide</Link></li>
           </ul>
         </nav>
@@ -21,6 +23,7 @@ const App = () => {
         <Route path="/" element={<ProjectList/>} />
         <Route path="/project/:id" element={<ProjectDetail/>} />
         <Route path="/create" element={<CreateProject/>} />
+        <Route path="/os-command" element={<OsCommander/>} />
         <Route path="/documentation" element={<DocumentationPage/>} />
       </Routes>
     </Router>
