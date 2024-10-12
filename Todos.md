@@ -6,8 +6,9 @@
 ## Tasks (29-09-24)
 - make it constantly listening and processing
 - make the genai model to execute the function in levels such taht if the command has parameters then go through the given prompt again and fill the probable answer in those parameters and return them with comma. (done)
--handle harcoded function parameters like : function controlMotor(action, speed = 0)
--custom settings for user such as delay and single time command when executing command
+- handle harcoded function parameters like : function controlMotor(action, speed = 0)
+- custom settings for user such as delay and single time command when executing command(will be added in code only)
 
 ## Tasks (12-10-2024)
 - ollama , hugging face implementation for a custom model using trasformers and pipeline
+- in the bot testing the functions need to have some parameter to see the time of execution for the function should be executed
