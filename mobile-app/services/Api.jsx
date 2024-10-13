@@ -79,3 +79,13 @@ export const fetchProjectCommands = async (projectId) => {
     throw error;
   }
 };
+
+export const osCommand = async (projectId, command) => {
+  try {
+    const response = await api.post(`/api/os-commands/execute`, { command });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching command response:', error);
+    throw error;
+  }
+};

@@ -6,6 +6,7 @@ import VoiceAssistant from '../screens/VoiceAssistant';
 import ProjectList from '../screens/ProjectList';
 import ProjectDetails from '../screens/project/[id]';
 import CreateProject from '../screens/CreateProject';
+import OsCommanderScreen from '../screens/OsCommandScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -32,6 +33,15 @@ const AppNavigator = () => (
     <Tab.Screen
       name="ProjectsTab"
       component={ProjectStack}
+      options={{
+        tabBarIcon: ({ color, size }) => (
+          <IconButton icon="folder" size={size} color={color} />
+        ),
+      }}
+    />
+    <Tab.Screen
+      name="OsCommander"
+      component={OsCommanderScreen}
       options={{
         tabBarIcon: ({ color, size }) => (
           <IconButton icon="folder" size={size} color={color} />

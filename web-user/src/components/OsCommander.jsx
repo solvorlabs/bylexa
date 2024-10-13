@@ -7,6 +7,8 @@ const OsCommander = () => {
   const [command, setCommand] = useState("");
   const [response, setResponse] = useState("");
   const [error, setError] = useState(null);
+  const [isShivamMode, setIsShivamMode] = useState(false);
+  const [isAukaatMode, setIsAukaatMode] = useState(false);
 
   // Check if the browser supports the Web Speech API
   const SpeechRecognition =
@@ -35,7 +37,14 @@ const OsCommander = () => {
       const spokenCommand = event.results[0][0].transcript;
       console.log("Command recognized:", spokenCommand);
       setCommand(spokenCommand);
-      sendCommandToApi(spokenCommand);
+
+      if (isShivamMode) {
+        playAudio("shivam.mp3"); // Play Shivam Mode audio
+      } else if (isAukaatMode) {
+        playAudio("aukaat.mp3"); // Play Aukaat Mode audio
+      } else {
+        sendCommandToApi(spokenCommand); // If no modes are enabled, send command to API
+      }
     };
 
     recognition.onerror = (event) => {
@@ -65,9 +74,38 @@ const OsCommander = () => {
     }
   };
 
+  // Function to play audio from public folder
+  const playAudio = (fileName) => {
+    const audio = new Audio(`/${fileName}`); // Make sure the audio file is in the public folder
+    audio.play().catch((err) => {
+      setError("Error playing audio: " + err.message);
+    });
+  };
+
   return (
     <div className="flex flex-col items-center p-8">
       <h1 className="text-3xl font-bold mb-6 text-center">Voice Command Input</h1>
+      
+      {/* Shivam Mode and Aukaat Mode Toggles */}
+      {/* <div className="flex space-x-4 mb-4">
+        <button
+          onClick={() => setIsShivamMode(!isShivamMode)}
+          className={`px-6 py-2 font-semibold text-white rounded-lg 
+            ${isShivamMode ? "bg-purple-500" : "bg-gray-500"} 
+            hover:bg-purple-600 transition-all duration-300`}
+        >
+          {isShivamMode ? "Shivam Mode: ON" : "Enable Shivam Mode"}
+        </button>
+        <button
+          onClick={() => setIsAukaatMode(!isAukaatMode)}
+          className={`px-6 py-2 font-semibold text-white rounded-lg 
+            ${isAukaatMode ? "bg-blue-500" : "bg-gray-500"} 
+            hover:bg-blue-600 transition-all duration-300`}
+        >
+          {isAukaatMode ? "Aukaat Mode: ON" : "Enable Aukaat Mode"}
+        </button>
+      </div> */}
+
       <div className="flex space-x-4 mb-4">
         <button
           onClick={startListening}
