@@ -16,6 +16,8 @@ const courseRoutes = require('./src/course-crafty/routes/courseRoutes');
 const translationRoutes = require('./src/course-crafty/routes/translationRoutes');
 const commandRoutes = require('./routes/commandRoutes');
 const osCommandRoutes = require('./routes/osCommandRoutes')
+const utilRoutes = require('./routes/utilRoutes')
+
 let currentCommand = ""; // This will store the latest command sent via /send-command
 app.get('/', (req, res) => {
   res.json("Hello there!! This is Bylexa(G.O.A.T. Greatest Of Automated Tasks) The Large Multi-Action Model")
@@ -60,6 +62,7 @@ app.use('/api/commands', commandRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api/translations', translationRoutes);
 app.use('/api/os-commands', osCommandRoutes);
+app.use('/api/util', utilRoutes);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
