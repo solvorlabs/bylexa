@@ -12,3 +12,6 @@
 ## Tasks (12-10-2024)
 - ollama , hugging face implementation for a custom model using trasformers and pipeline
 - in the bot testing the functions need to have some parameter to see the time of execution for the function should be executed
+
+## Tasks (14-10-2024)
+- add a narrator feel to the os interactor that cites the action it is performing
