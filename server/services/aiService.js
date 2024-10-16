@@ -4,6 +4,20 @@ const genAI = new GoogleGenerativeAI(process.env.API_KEY_12607);
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
 
+exports.getAssistantResponse = async (command) => {
+  const prompt = `You are a helpful voice assistant. Given the following user command: "${command}", 
+  respond with an appropriate and natural answer`;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const responseText = result.response.text().trim();
+    console.log(result)
+    return responseText;
+  } catch (error) {
+    console.error('Error generating assistant response:', error);
+    throw new Error('Failed to get assistant response');
+  }
+};
 
 exports.interpretCommand = async (command, availableCommands) => {
   const prompt = `Interpret the following command for an IoT device: "${command}". 

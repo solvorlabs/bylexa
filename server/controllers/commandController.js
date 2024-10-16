@@ -1,4 +1,5 @@
 const Command = require('../models/Command');
+const { getAssistantResponse } = require('../services/aiService');
 
 exports.createCommand = async (req, res) => {
   const { project, name, description, action, parameters } = req.body;
@@ -49,5 +50,20 @@ exports.deleteCommand = async (req, res) => {
     res.json({ message: 'Command deleted successfully' });
   } catch (error) {
     res.status(500).json({ error: 'Server error' });
+  }
+};
+
+exports.handleAssistantCommand = async (req, res) => {
+  const { command } = req.body;
+
+  if (!command) {
+    return res.status(400).json({ error: "Command is required" });
+  }
+
+  try {
+    const response = await getAssistantResponse(command);
+    res.json({ success: true, response });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get assistant response' });
   }
 };

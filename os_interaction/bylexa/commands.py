@@ -2,7 +2,6 @@ import os
 import subprocess
 import platform
 
-# Mapping of application names to their executable commands (customize as needed)
 APP_PATHS = {
     "chrome": "chrome" if platform.system() == "Windows" else "google-chrome",
     "notepad": "notepad" if platform.system() == "Windows" else "gedit",
@@ -15,33 +14,26 @@ def open_application(app_name):
         try:
             print(f"Opening {app_name}...")
             subprocess.Popen([APP_PATHS[app_name]])
+            return f"Opened {app_name} successfully"
         except Exception as e:
-            print(f"Failed to open {app_name}: {e}")
+            return f"Failed to open {app_name}: {e}"
     else:
-        print(f"Application {app_name} not recognized.")
+        return f"Application {app_name} not recognized."
 
 def perform_task(command):
-    """Handle tasks like opening URLs, performing search actions."""
+    """Handles tasks like opening URLs, performing search actions."""
     app_name = command.get('application')
     action = command.get('action')
     task = command.get('task')
 
     if action == "open" and app_name:
-        open_application(app_name)
+        result = open_application(app_name)
         if task and app_name == "chrome":
             # Handle tasks for Chrome (like opening URLs)
             import time
             time.sleep(3)  # Give Chrome time to open
             os.system(f'start chrome {task}' if platform.system() == "Windows" else f'open -a "Google Chrome" {task}')
+            result += f", Opened URL: {task}"
+        return result
     else:
-        print("Action not supported or unrecognized.")
-
-# Example reusable function call
-if __name__ == "__main__":
-    # Simulate a command from the LLM: "open chrome and go to youtube.com"
-    command = {
-        "application": "chrome",
-        "action": "open",
-        "task": "https://youtube.com"
-    }
-    perform_task(command)
+        return "Action not supported or unrecognized."

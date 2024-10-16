@@ -17,6 +17,7 @@ const translationRoutes = require('./src/course-crafty/routes/translationRoutes'
 const commandRoutes = require('./routes/commandRoutes');
 const osCommandRoutes = require('./routes/osCommandRoutes')
 const utilRoutes = require('./routes/utilRoutes')
+const authRoutes = require('./routes/authRoutes')
 
 let currentCommand = ""; // This will store the latest command sent via /send-command
 app.get('/', (req, res) => {
@@ -63,6 +64,7 @@ app.use('/api/courses', courseRoutes);
 app.use('/api/translations', translationRoutes);
 app.use('/api/os-commands', osCommandRoutes);
 app.use('/api/util', utilRoutes);
+app.use('/api/auth', authRoutes); 
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
