@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { Mic, MicOff } from 'lucide-react';
+import Config from '../config/Config';
 
 const AssistantInteraction = () => {
     const [userCommand, setUserCommand] = useState('');
@@ -50,7 +51,7 @@ const AssistantInteraction = () => {
         setError(null);
 
         try {
-            const response = await axios.post('http://localhost:3000/api/commands/assistant-command', {
+            const response = await axios.post(`${Config.backendUrl}/api/commands/assistant-command`, {
                 command: command,
             });
 

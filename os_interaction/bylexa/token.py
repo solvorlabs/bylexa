@@ -14,7 +14,7 @@ def login():
 
     try:
         # Make a POST request to Bylexa API to log in
-        response = requests.post("http://localhost:3000/api/auth/login", json=payload)
+        response = requests.post("https://bylexa.onrender.com//api/auth/login", json=payload)
 
         # Check if the request was successful
         if response.status_code == 200:

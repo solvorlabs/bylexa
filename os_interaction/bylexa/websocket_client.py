@@ -16,7 +16,7 @@ def get_protected_data():
         headers = {
             "Authorization": f"Bearer {token}"
         }
-        response = requests.get("http://localhost:3000/protected", headers=headers)
+        response = requests.get("https://bylexa.onrender.com/protected", headers=headers)
 
         if response.status_code == 200:
             print(response.json().get("message"))
@@ -25,15 +25,15 @@ def get_protected_data():
     except requests.RequestException as e:
         print(f"Error connecting to the server: {e}")
 
-async def listen_to_server(host, port):
+async def listen_to_server(host):
     """Connect to the server and listen for commands."""
     email = load_email()
     if not email:
         print("No email found. Please run 'bylexa login' to authenticate.")
         return
 
-    uri = f"ws://{host}:{port}/ws"
-    
+    uri = f"wss://{host}/ws"  # Use 'wss://' for secure WebSocket connection
+
     while True:
         try:
             async with websockets.connect(uri, extra_headers={"Authorization": email}) as websocket:
@@ -65,6 +65,10 @@ async def listen_to_server(host, port):
 
         await asyncio.sleep(5)
 
-def start_client(host="localhost", port=3000):
+def start_client(host="bylexa.onrender.com"):
     """Start WebSocket client."""
-    asyncio.get_event_loop().run_until_complete(listen_to_server(host, port))
+    asyncio.get_event_loop().run_until_complete(listen_to_server(host))
+
+# def start_client(host="localhost", port=3000):
+#     """Start WebSocket client."""
+#     asyncio.get_event_loop().run_until_complete(listen_to_server(host, port))

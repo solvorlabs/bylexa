@@ -1,2 +1,5 @@
-websockets
 click
+websockets
+requests
+typing-extensions
+PyJWT

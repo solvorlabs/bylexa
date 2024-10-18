@@ -1,12 +1,14 @@
 from setuptools import setup, find_packages
-
 setup(
     name="bylexa",
-    version="1.0.0",
+    version="1.0.2",
     packages=find_packages(),
     install_requires=[
-        "websockets",
-        "click",
+        "click",        # For CLI functionality
+        "websockets",   # For WebSocket communication
+        "requests",     # For making HTTP API calls
+        "typing-extensions",  # Optional for typing hints in some Python versions
+        "PyJWT",
     ],
     entry_points={
         'console_scripts': [
@@ -15,6 +17,6 @@ setup(
     },
     author="exploring-solver",
     description="A Python package for controlling your PC using Bylexa voice commands.",
-    url="https://github.com/exploring-solver/bylexa",  # Update this with the actual URL
+    url="https://github.com/exploring-solver/bylexa",  # Update this with your actual GitHub repo URL
     license="MIT",
 )
