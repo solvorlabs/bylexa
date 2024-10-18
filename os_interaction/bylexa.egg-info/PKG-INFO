@@ -1,0 +1,10 @@
+Metadata-Version: 2.1
+Name: bylexa
+Version: 1.0.0
+Summary: A Python package for controlling your PC using Bylexa voice commands.
+Home-page: https://github.com/exploring-solver/bylexa
+Author: exploring-solver
+License: MIT
+License-File: LICENSE
+Requires-Dist: websockets
+Requires-Dist: click

@@ -1,7 +1,10 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { spawn } = require('child_process');
+const { sendCommandToAgent } = require('../config/websocket');
+const config = require('../config');
 const genAI = new GoogleGenerativeAI(process.env.API_KEY_12607);
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+const jwt = require('jsonwebtoken');
 
 const interpretCommand = async (command) => {
   const prompt = `Interpret the following command: "${command}". Extract and return the application, action, and task in JSON format. For example: {"application": "browser", "action": "open", "task": "google.com"}`;
@@ -84,5 +87,34 @@ exports.handleOSCommand = async (req, res) => {
   } catch (error) {
     console.error('Unexpected error handling OS command:', error.message); // Log any unexpected errors
     res.status(500).json({ success: false, message: 'An unexpected error occurred. Please try again.' });
+  }
+};
+
+exports.handleModuleOsCommand = async (req, res) => {
+  const { command } = req.body;
+  const userToken = req.user.token;
+  const decoded = jwt.verify(userToken, config.API_KEY_JWT);
+  req.user = decoded;
+
+  if (!command) {
+    return res.status(400).json({ message: 'No command provided' });
+  }
+
+  try {
+    // Interpret the command using Gemini
+    const interpretedCommand = await interpretCommand(command);
+
+    if (interpretedCommand.success === false) {
+      return res.status(400).json({ message: interpretedCommand.message });
+    }
+
+    // Send the interpreted command to the user's Python module via WebSocket
+    sendCommandToAgent(req.user.email, interpretedCommand);
+
+    // Send response back to the frontend
+    res.status(200).json({ message: 'Command sent successfully', command: interpretedCommand });
+  } catch (error) {
+    console.error('Error processing command:', error);
+    res.status(500).json({ message: 'Failed to process command' });
   }
 };

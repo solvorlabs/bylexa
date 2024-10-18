@@ -5,8 +5,8 @@ setup(
     version="1.0.0",
     packages=find_packages(),
     install_requires=[
-        "websockets",  # For WebSocket communication
-        "click",       # For CLI functionality
+        "websockets",
+        "click",
     ],
     entry_points={
         'console_scripts': [

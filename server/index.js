@@ -1,72 +1,45 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
 require('dotenv').config();
+require('./config/db');  // Import DB connection
+const { setupWebSocket } = require('./config/websocket');  // WebSocket setup
+const http = require('http');
 
+// Initialize express app
 const app = express();
 app.use(cors());
 app.use(bodyParser.json());
-require('./db');
+const server = http.createServer(app);
 
-const genAI = new GoogleGenerativeAI(process.env.API_KEY_12607);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+// Setup WebSocket for real-time communication with pip module
+setupWebSocket(server);
+
+// Import routes
 const projectRoutes = require('./routes/projectRoutes');
+const commandRoutes = require('./routes/commandRoutes');
 const courseRoutes = require('./src/course-crafty/routes/courseRoutes');
 const translationRoutes = require('./src/course-crafty/routes/translationRoutes');
-const commandRoutes = require('./routes/commandRoutes');
-const osCommandRoutes = require('./routes/osCommandRoutes')
-const utilRoutes = require('./routes/utilRoutes')
-const authRoutes = require('./routes/authRoutes')
+const osCommandRoutes = require('./routes/osCommandRoutes');
+const utilRoutes = require('./routes/utilRoutes');
+const authRoutes = require('./routes/authRoutes');
 
-let currentCommand = ""; // This will store the latest command sent via /send-command
+// Main route
 app.get('/', (req, res) => {
-  res.json("Hello there!! This is Bylexa(G.O.A.T. Greatest Of Automated Tasks) The Large Multi-Action Model")
-})
-app.get('/control', (req, res) => {
-  // Send the current command to the ESP32
-  if (currentCommand) {
-    res.send(currentCommand); // Send the latest command to ESP32
-  } else {
-    res.status(400).send('No command available');
-  }
+  res.json("Hello there!! This is Bylexa (G.O.A.T.) The Large Multi-Action Model");
 });
 
-app.post('/send-command', async (req, res) => {
-  const { command } = req.body;
-  console.log(`Received command: ${command}`);
-  
-  // Use Gemini to interpret and generate a response from the command
-  const prompt = command;
-  try {
-    const result = await model.generateContent(prompt);
-    const interpretedCommand = result.response.text();
-    
-    // Log the interpreted command and update the currentCommand
-    console.log(`Interpreted command: ${interpretedCommand}`);
-    if (prompt.includes("blink")) {
-      currentCommand = "blink_led";
-    } else if (prompt.includes("rotate")) {
-      currentCommand = "rotate_servo";
-    }
-    console.log(currentCommand);
-    res.json({ response });
-  } catch (error) {
-    console.error('Error generating content:', error);
-    res.status(500).json({ error: 'Failed to process speech' });
-  }
-});
-
-// Routes
+// Additional routes
 app.use('/api/projects', projectRoutes);
 app.use('/api/commands', commandRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api/translations', translationRoutes);
 app.use('/api/os-commands', osCommandRoutes);
 app.use('/api/util', utilRoutes);
-app.use('/api/auth', authRoutes); 
+app.use('/api/auth', authRoutes);
 
+// Start the server and listen on all network interfaces (0.0.0.0)
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`Server is running on port ${PORT}`);
 });
