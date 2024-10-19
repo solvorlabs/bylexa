@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import axios from 'axios';
 import Config from '../config/Config';
+import { useNavigate } from 'react-router-dom';
 
 const VoiceCommandSender = () => {
   const [command, setCommand] = useState('');
   const [response, setResponse] = useState('');
+  const navigate = useNavigate();
 
   // Function to capture voice input (using Web Speech API)
   const captureVoiceCommand = () => {
@@ -41,6 +43,12 @@ const VoiceCommandSender = () => {
     }
   };
 
+  // Function to log out
+  const logout = () => {
+    localStorage.removeItem('token'); // Remove the token from localStorage
+    navigate('/login'); // Redirect to the login page
+  };
+
   return (
     <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center text-white font-sans">
       <h1 className="text-4xl font-bold mb-6 text-center text-cyan-300">Bylexa Voice Command Interface</h1>
@@ -60,6 +68,14 @@ const VoiceCommandSender = () => {
         className="mb-6 px-6 py-3 bg-gradient-to-r from-green-500 to-teal-500 hover:from-teal-500 hover:to-green-500 text-white font-bold rounded-lg shadow-lg transition-all duration-300 transform hover:scale-105"
       >
         Send Command
+      </button>
+
+      {/* Logout Button */}
+      <button 
+        onClick={logout} 
+        className="mb-6 px-6 py-3 bg-gradient-to-r from-red-500 to-pink-500 hover:from-pink-500 hover:to-red-500 text-white font-bold rounded-lg shadow-lg transition-all duration-300 transform hover:scale-105"
+      >
+        Logout
       </button>
       
       <div className="w-full max-w-lg bg-gray-800 p-6 rounded-lg shadow-lg text-left">
