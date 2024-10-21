@@ -67,22 +67,15 @@ Do not include any additional text.`;
 
 // Extract task, application, and action from the command using LLM
 exports.extractTaskApplicationAction = async (command) => {
-  const prompt = `Interpret the following user command: "${command}".
-Extract the 'task', 'application', and 'action' from the command.
-Return the result in the following format: 
-{"task": "task_value", "application": "application_value", "action": "action_value"}.
-Do not include any additional text.`;
+  const prompt = `Analyze the following user command: "${command}".
+Extract and return the 'task', 'application', and 'action' as a JSON object in the format:
+{"task": "value", "application": "value", "action": "value"}.
+If any field is not applicable, set its value to null.`;
 
   try {
     const result = await model.generateContent(prompt);
-    const parsedResponse = JSON.parse(result.response.text().trim());
-    console.log(parsedResponse);
-    // Ensure that task, application, and action are present
-    if (parsedResponse.task && parsedResponse.application && parsedResponse.action) {
-      return parsedResponse;
-    } else {
-      throw new Error('Missing required fields in the parsed response');
-    }
+    const parsedResponse = JSON.parse(result.response.text.trim());
+    return parsedResponse;
   } catch (error) {
     console.error('Error extracting task, application, and action:', error);
     throw new Error('Failed to extract task, application, and action');

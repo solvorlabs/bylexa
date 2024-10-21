@@ -1,126 +1,103 @@
-import sys
+from typing import Dict, Callable
+from .actions import (
+    open_application,
+    run_shell_command,
+    manipulate_file,
+    interact_with_clipboard,
+    schedule_task,
+    open_document,
+    control_media_player,
+    perform_custom_script,
+)
 import json
-import subprocess
-import os
-import platform
-from typing import Dict, List, Optional
 
-# Type aliases
-AppConfig = Dict[str, List[str]]
-PlatformConfig = Dict[str, AppConfig]
+# Registry for command handlers
+COMMAND_HANDLERS: Dict[str, Callable] = {}
 
-# Application configurations
-APP_CONFIGS: PlatformConfig = {
-    "windows": {
-        "chrome": [
-            r"C:\Program Files\Google\Chrome\Application\chrome.exe",
-            r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
-        ],
-        "firefox": [
-            r"C:\Program Files\Mozilla Firefox\firefox.exe",
-            r"C:\Program Files (x86)\Mozilla Firefox\firefox.exe",
-        ],
-        "notepad": ["notepad.exe"],
-        "spotify": [
-            r"C:\Users\amane\AppData\Roaming\Spotify\Spotify.exe",
-            r"C:\Program Files\WindowsApps\SpotifyAB.SpotifyMusic_*\Spotify.exe",
-        ],
-    },
-    "darwin": {
-        "chrome": ["/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"],
-        "firefox": ["/Applications/Firefox.app/Contents/MacOS/firefox"],
-        "text_editor": ["open", "-a", "TextEdit"],
-        "spotify": ["/Applications/Spotify.app/Contents/MacOS/Spotify"],
-    },
-    "linux": {
-        "chrome": ["google-chrome", "google-chrome-stable"],
-        "firefox": ["firefox"],
-        "text_editor": ["gedit", "nano", "vim"],
-        "spotify": ["spotify"],
-    },
-}
-def get_platform() -> str:
-    """Return the current platform: 'windows', 'darwin', or 'linux'."""
-    if sys.platform.startswith('win'):
-        return 'windows'
-    elif sys.platform == 'darwin':
-        return 'darwin'
-    else:
-        return 'linux'
-    
-def find_executable(app: str) -> Optional[str]:
-    """Find the executable path for the given application."""
-    platform = get_platform()
-    app_paths = APP_CONFIGS.get(platform, {}).get(app.lower(), [])
-    
-    for path in app_paths:
-        # Expand environment variables (e.g., amane%USERNAME%)
-        expanded_path = os.path.expandvars(path)
-        if '*' in expanded_path:
-            import glob
-            matches = glob.glob(expanded_path)
-            if matches:
-                return matches[0]
-        elif os.path.exists(expanded_path):
-            return expanded_path
-    
-    return None
-
-def open_application(app: str, task: Optional[str] = None) -> str:
-    """Open the specified application and perform a task if provided."""
-    # Convert app name to lowercase
-    app = app.lower()
-    app_path = find_executable(app)
-    
-    if not app_path:
-        return f"Application {app.capitalize()} not found or not supported."
-
-    try:
-        command = [app_path]
-        if task:
-            command.append(task)
-        
-        subprocess.Popen(command)
-        result = f"Opened {app.capitalize()}"
-        if task:
-            result += f" and performed task: {task}"
-        return result
-    except Exception as e:
-        return f"Error opening {app.capitalize()}: {str(e)}"
+def register_command(action: str):
+    """Decorator to register a command handler."""
+    def decorator(func):
+        COMMAND_HANDLERS[action.lower()] = func
+        return func
+    return decorator
 
 def perform_action(command: Dict[str, str]) -> str:
     """Perform the action specified in the command dictionary."""
-    app = command.get('application', '').lower()
     action = command.get('action', '').lower()
+    handler = COMMAND_HANDLERS.get(action)
+    if handler:
+        return handler(command)
+    else:
+        return f"Action '{action}' is not supported."
+
+@register_command("open")
+def handle_open_command(command: Dict[str, str]) -> str:
+    app = command.get('application')
     task = command.get('task')
+    file_path = command.get('file_path')
+    if file_path:
+        return open_document(file_path)
+    if not app:
+        return "Error: 'application' not specified in command."
+    return open_application(app, task)
 
-    if action == "open":
-        return open_application(app, task)
-    else:
-        return f"Action {action} is not supported for {app}."
+@register_command("run")
+def handle_run_command(command: Dict[str, str]) -> str:
+    command_str = command.get('command')
+    if not command_str:
+        return "Error: 'command' not specified."
+    return run_shell_command(command_str)
 
-def main(command_input):
-    """Main function to handle incoming commands."""
+@register_command("file")
+def handle_file_command(command: Dict[str, str]) -> str:
+    action = command.get('file_action')
+    source = command.get('source')
+    destination = command.get('destination')
+    if not action or not source:
+        return "Error: 'file_action' and 'source' are required."
+    return manipulate_file(action, source, destination)
+
+@register_command("clipboard")
+def handle_clipboard_command(command: Dict[str, str]) -> str:
+    action = command.get('clipboard_action')
+    text = command.get('text')
+    return interact_with_clipboard(action, text)
+
+@register_command("schedule")
+def handle_schedule_command(command: Dict[str, str]) -> str:
+    time_str = command.get('time')
+    if not time_str:
+        return "Error: 'time' not specified."
+    return schedule_task(time_str, command.get('task_command'))
+
+@register_command("media")
+def handle_media_command(command: Dict[str, str]) -> str:
+    action = command.get('media_action')
+    media = command.get('media')
+    if not action:
+        return "Error: 'media_action' not specified."
+    return control_media_player(action, media)
+
+@register_command("script")
+def handle_script_command(command: Dict[str, str]) -> str:
+    script_path = command.get('script_path')
+    args = command.get('args', [])
+    if not script_path:
+        return "Error: 'script_path' not specified."
+    return perform_custom_script(script_path, args)
+
+@register_command("close")
+def handle_close_command(command: Dict[str, str]) -> str:
+    app = command.get('application')
+    if not app:
+        return "Error: 'application' not specified in command."
+    # Implement logic to close the application
+    # For example, use os.system("taskkill /im app.exe /f") on Windows
     try:
-        if isinstance(command_input, str):
-            command = json.loads(command_input)
-        elif isinstance(command_input, dict):
-            command = command_input
+        if get_platform() == 'windows':
+            os.system(f"taskkill /im {app}.exe /f")
         else:
-            raise ValueError("Invalid command input type")
-        
-        result = perform_action(command)
-        return result
-    except json.JSONDecodeError:
-        return "Error: Invalid JSON input"
-    except KeyError as e:
-        return f"Error: Missing key in JSON: {str(e)}"
+            os.system(f"pkill {app}")
+        return f"Closed '{app}'"
     except Exception as e:
-        return f"Error: {str(e)}"
-
-if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        result = main(sys.argv[1])
-        print(result)
-    else:
-        print("Error: No command provided")
+        return f"Error closing '{app}': {str(e)}"

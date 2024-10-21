@@ -29,10 +29,10 @@ async def listen_to_server(host):
     """Connect to the server and listen for commands."""
     email = load_email()
     if not email:
-        print("No email found. Please run 'bylexa login' to authenticate.")
+        print("Authentication required. Please run 'bylexa login'.")
         return
 
-    uri = f"wss://{host}/ws"  # Use 'wss://' for secure WebSocket connection
+    uri = f"wss://{host}/ws"
 
     while True:
         try:
@@ -58,17 +58,13 @@ async def listen_to_server(host):
             print(f"Invalid WebSocket URI: {uri}")
             return
         except websockets.exceptions.ConnectionClosedError:
-            print(f"Connection closed unexpectedly. Retrying in 5 seconds...")
+            print("Connection closed unexpectedly. Retrying in 5 seconds...")
+            await asyncio.sleep(5)
         except Exception as e:
             print(f"An error occurred: {e}")
             print("Retrying in 5 seconds...")
-
-        await asyncio.sleep(5)
+            await asyncio.sleep(5)
 
 def start_client(host="bylexa.onrender.com"):
     """Start WebSocket client."""
     asyncio.get_event_loop().run_until_complete(listen_to_server(host))
-
-# def start_client(host="localhost", port=3000):
-#     """Start WebSocket client."""
-#     asyncio.get_event_loop().run_until_complete(listen_to_server(host, port))

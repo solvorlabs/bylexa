@@ -1,5 +1,5 @@
 import click
-from .token import login
+from .token import login as do_login
 from .websocket_client import start_client
 
 @click.group()
@@ -7,9 +7,9 @@ def main():
     pass
 
 @main.command()
-def login_command():
+def login():
     """Login to Bylexa and store the token."""
-    login()
+    do_login()
 
 @main.command()
 def start():
