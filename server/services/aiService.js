@@ -65,6 +65,9 @@ Do not include any additional text.`;
   }
 };
 
+
+
+// not being used actually
 // Extract task, application, and action from the command using LLM
 exports.extractTaskApplicationAction = async (command) => {
   const prompt = `Analyze the following user command: "${command}".

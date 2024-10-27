@@ -1,4 +1,5 @@
 from typing import Dict, Callable
+from .config import get_platform
 from .actions import (
     open_application,
     run_shell_command,
@@ -10,6 +11,7 @@ from .actions import (
     perform_custom_script,
 )
 import json
+import os
 
 # Registry for command handlers
 COMMAND_HANDLERS: Dict[str, Callable] = {}
@@ -41,9 +43,22 @@ def handle_open_command(command: Dict[str, str]) -> str:
         return "Error: 'application' not specified in command."
     return open_application(app, task)
 
+@register_command("custom_script")
+def handle_custom_script_command(command: Dict[str, str]) -> str:
+    script_name = command.get('script_name')
+    args = command.get('args', [])
+    if not script_name:
+        return "Error: 'script_name' not specified."
+    
+    script_path = get_custom_script_path(script_name)
+    if not script_path:
+        return f"Error: Script '{script_name}' not found in configured paths."
+    
+    return perform_custom_script(script_path, args)
+
 @register_command("run")
 def handle_run_command(command: Dict[str, str]) -> str:
-    command_str = command.get('command')
+    command_str = command.get('command_line')
     if not command_str:
         return "Error: 'command' not specified."
     return run_shell_command(command_str)

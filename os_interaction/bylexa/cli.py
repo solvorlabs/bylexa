@@ -1,6 +1,8 @@
+# cli.py
 import click
 from .token import login as do_login
 from .websocket_client import start_client
+from .config_gui import run_gui  # Import the run_gui function from config_gui
 
 @click.group()
 def main():
@@ -15,3 +17,8 @@ def login():
 def start():
     """Start listening for commands from the Bylexa server."""
     start_client()
+
+@main.command()
+def config():
+    """Open the Bylexa configuration GUI."""
+    run_gui()

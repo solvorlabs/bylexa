@@ -2,9 +2,12 @@ LICENSE
 README.md
 setup.py
 bylexa/__init__.py
+bylexa/actions.py
 bylexa/cli.py
 bylexa/commands.py
 bylexa/config.py
+bylexa/constants.py
+bylexa/main.py
 bylexa/token.py
 bylexa/websocket_client.py
 bylexa.egg-info/PKG-INFO

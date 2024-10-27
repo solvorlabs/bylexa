@@ -67,6 +67,20 @@ def add_app_path(app_name: str, path: str):
     app_configs[platform][app_name].append(path)
     save_app_configs(app_configs)
 
+def edit_app_path(app_name: str, old_path: str, new_path: str):
+    """Edit an existing path in the configuration."""
+    app_configs = load_app_configs()
+    platform = get_platform()
+    if platform in app_configs and app_name in app_configs[platform]:
+        try:
+            index = app_configs[platform][app_name].index(old_path)
+            app_configs[platform][app_name][index] = new_path
+            save_app_configs(app_configs)
+            return True
+        except ValueError:
+            return False
+    return False
+
 def remove_app_path(app_name: str, path: str):
     app_configs = load_app_configs()
     platform = get_platform()
@@ -109,3 +123,43 @@ def load_email():
     except jwt.InvalidTokenError:
         print("Invalid token. Please log in again.")
         return None
+
+
+CUSTOM_SCRIPTS_KEY = 'custom_scripts'
+
+def add_custom_script(script_name: str, script_path: str):
+    """Add a custom script path."""
+    app_configs = load_app_configs()
+    platform = get_platform()
+    if platform not in app_configs:
+        app_configs[platform] = {}
+    if CUSTOM_SCRIPTS_KEY not in app_configs[platform]:
+        app_configs[platform][CUSTOM_SCRIPTS_KEY] = {}
+    app_configs[platform][CUSTOM_SCRIPTS_KEY][script_name] = script_path
+    save_app_configs(app_configs)
+
+def remove_custom_script(script_name: str):
+    """Remove a custom script."""
+    app_configs = load_app_configs()
+    platform = get_platform()
+    if platform in app_configs and CUSTOM_SCRIPTS_KEY in app_configs[platform]:
+        if script_name in app_configs[platform][CUSTOM_SCRIPTS_KEY]:
+            del app_configs[platform][CUSTOM_SCRIPTS_KEY][script_name]
+            save_app_configs(app_configs)
+
+def edit_custom_script(script_name: str, new_script_path: str):
+    """Edit the path of an existing custom script."""
+    app_configs = load_app_configs()
+    platform = get_platform()
+    if platform in app_configs and CUSTOM_SCRIPTS_KEY in app_configs[platform]:
+        if script_name in app_configs[platform][CUSTOM_SCRIPTS_KEY]:
+            app_configs[platform][CUSTOM_SCRIPTS_KEY][script_name] = new_script_path
+            save_app_configs(app_configs)
+            return True
+    return False
+
+def get_custom_script_path(script_name: str) -> Optional[str]:
+    """Get the path of a custom script by name."""
+    app_configs = load_app_configs()
+    platform = get_platform()
+    return app_configs.get(platform, {}).get(CUSTOM_SCRIPTS_KEY, {}).get(script_name)

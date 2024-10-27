@@ -9,8 +9,15 @@ from pathlib import Path
 import pyperclip  # For clipboard operations
 import schedule   # For scheduling tasks
 import time
+import ctypes
 
-
+def is_admin() -> bool:
+    """Check if the script is running with administrative privileges."""
+    try:
+        return ctypes.windll.shell32.IsUserAnAdmin() != 0
+    except:
+        return False
+    
 def find_executable(app: str) -> Optional[str]:
     """Find the executable path for the given application."""
     platform = get_platform()
@@ -33,6 +40,12 @@ def open_application(app: str, task: Optional[str] = None) -> str:
         return f"Application '{app}' not found or not supported."
 
     try:
+        # Check if the app_path is a shortcut (.lnk file)
+        if app_path.lower().endswith('.lnk'):
+            os.startfile(app_path)  # This will open the shortcut properly on Windows
+            return f"Opened '{app}' via shortcut"
+
+        # If it's not a shortcut, run the executable directly
         command = [app_path]
         if task:
             command.append(task)
@@ -42,6 +55,13 @@ def open_application(app: str, task: Optional[str] = None) -> str:
         if task:
             result += f" with task: {task}"
         return result
+    except PermissionError:
+        # If permission is denied, prompt the user to run as an administrator
+        if not is_admin():
+            return ("Error: Permission denied. Please run 'bylexa start' as an administrator "
+                    "for a complete experience.")
+        else:
+            return f"Error: Permission denied while opening '{app}'."
     except Exception as e:
         return f"Error opening '{app}': {str(e)}"
 

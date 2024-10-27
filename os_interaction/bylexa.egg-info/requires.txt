@@ -1,5 +1,5 @@
 click
 websockets
 requests
-typing-extensions
 PyJWT
+typing_extensions
