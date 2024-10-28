@@ -1,93 +1,245 @@
-# config_gui.py
 import tkinter as tk
-from tkinter import messagebox, simpledialog
-from .config import load_app_configs, save_app_configs, add_app_path, remove_app_path, edit_app_path, get_platform
+from tkinter import ttk, filedialog, messagebox, simpledialog
+import json
+import os
+from pathlib import Path
+from typing import Dict, Any, List
 
 class ConfigGUI:
-    def __init__(self, master):
-        self.master = master
-        self.master.title("Bylexa Config Manager")
-        self.platform = get_platform()
+    def __init__(self, config_path: str):
+        self.config_path = config_path
+        self.config_data = self.load_config()
         
-        # Listbox to display app configurations
-        self.listbox = tk.Listbox(self.master, width=50, height=15)
-        self.listbox.pack()
+        # Create the main window
+        self.root = tk.Tk()
+        self.root.title("Bylexa Configuration")
+        self.root.geometry("800x600")
 
-        self.refresh_button = tk.Button(self.master, text="Refresh", command=self.refresh)
-        self.refresh_button.pack()
+        # Create notebook for tabs
+        self.notebook = ttk.Notebook(self.root)
+        self.notebook.pack(expand=True, fill='both', padx=10, pady=5)
 
-        self.add_button = tk.Button(self.master, text="Add Path", command=self.add_config)
-        self.add_button.pack()
+        # Initialize tabs
+        self.init_apps_tab()
+        self.init_scripts_tab()
+        self.init_settings_tab()
 
-        self.remove_button = tk.Button(self.master, text="Remove Path", command=self.remove_config)
-        self.remove_button.pack()
+        # Add save button at bottom
+        self.save_button = tk.Button(self.root, text="Save Configuration", command=self.save_config)
+        self.save_button.pack(pady=10)
 
-        self.edit_button = tk.Button(self.master, text="Edit Path", command=self.edit_config)  
+    def init_apps_tab(self):
+        """Initialize the Applications tab with scrollable content"""
+        self.apps_tab = ttk.Frame(self.notebook)
+        self.notebook.add(self.apps_tab, text='Applications')
+
+        # Create canvas and scrollbar for scrolling
+        canvas = tk.Canvas(self.apps_tab)
+        scrollbar = ttk.Scrollbar(self.apps_tab, orient="vertical", command=canvas.yview)
+        scrollable_frame = ttk.Frame(canvas)
+
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        # Create frames for different platforms
+        self.windows_frame = ttk.LabelFrame(scrollable_frame, text="Windows Applications")
+        self.windows_frame.pack(fill='x', padx=5, pady=5)
+
+        self.mac_frame = ttk.LabelFrame(scrollable_frame, text="MacOS Applications")
+        self.mac_frame.pack(fill='x', padx=5, pady=5)
+
+        self.linux_frame = ttk.LabelFrame(scrollable_frame, text="Linux Applications")
+        self.linux_frame.pack(fill='x', padx=5, pady=5)
+
+        # Add entry fields for each platform
+        self.app_entries = {
+            'windows': self.create_app_entries(self.windows_frame, 'windows'),
+            'darwin': self.create_app_entries(self.mac_frame, 'darwin'),
+            'linux': self.create_app_entries(self.linux_frame, 'linux')
+        }
+
+        # Pack the canvas and scrollbar
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+    def create_app_entries(self, parent: ttk.LabelFrame, platform: str) -> Dict[str, List[ttk.Entry]]:
+        """Create entry fields for applications with multiple paths"""
+        entries = {}
         
+        # Add new app button
+        def add_new_app():
+            app_name = simpledialog.askstring("New Application", "Enter application name:")
+            if app_name:
+                entries[app_name] = self.add_app_entries(parent, platform, app_name, [""])
+
+        ttk.Button(parent, text="Add Application", command=add_new_app).pack(pady=5)
+
+        # Add existing apps
+        platform_apps = self.config_data.get(platform, {})
+        for app_name, paths in platform_apps.items():
+            entries[app_name] = self.add_app_entries(parent, platform, app_name, paths)
+
+        return entries
+
+    def add_app_entries(self, parent: ttk.LabelFrame, platform: str, app_name: str, paths: List[str]) -> List[ttk.Entry]:
+        """Add entry fields for an application with multiple paths"""
+        app_frame = ttk.LabelFrame(parent, text=app_name)
+        app_frame.pack(fill='x', padx=5, pady=2)
+
+        entries = []
         
-          # Custom Scripts Tab Widgets
-        self.script_listbox = tk.Listbox(self.script_tab, width=50, height=15)
-        self.script_listbox.pack()
+        def add_path_entry():
+            self.create_path_entry(app_frame, "", entries)
 
-        self.script_refresh_button = tk.Button(self.script_tab, text="Refresh", command=self.refresh_scripts)
-        self.script_refresh_button.pack()
+        for path in paths:
+            self.create_path_entry(app_frame, path, entries)
 
-        self.script_add_button = tk.Button(self.script_tab, text="Add Script", command=self.add_script)
-        self.script_add_button.pack()
+        # Add button for additional paths
+        ttk.Button(app_frame, text="Add Path", command=add_path_entry).pack(pady=2)
 
-        self.script_remove_button = tk.Button(self.script_tab, text="Remove Script", command=self.remove_script)
-        self.script_remove_button.pack()
+        return entries
 
-        self.script_edit_button = tk.Button(self.script_tab, text="Edit Script", command=self.edit_script)
-        self.script_edit_button.pack()
-        
-        # New button
-        self.edit_button.pack()
+    def create_path_entry(self, parent: ttk.Frame, path: str, entries: List[ttk.Entry]):
+        """Create a single path entry with browse button"""
+        frame = ttk.Frame(parent)
+        frame.pack(fill='x', padx=5, pady=2)
 
-        self.refresh()
+        entry = ttk.Entry(frame, width=50)
+        entry.pack(side='left', padx=5, fill='x', expand=True)
+        entry.insert(0, path)
+        entries.append(entry)
 
-    def refresh(self):
-        """Refresh the listbox with current app configurations."""
-        self.listbox.delete(0, tk.END)
-        app_configs = load_app_configs().get(self.platform, {})
-        for app, paths in app_configs.items():
-            for path in paths:
-                self.listbox.insert(tk.END, f"{app}: {path}")
+        def browse_path():
+            file_path = filedialog.askopenfilename()
+            if file_path:
+                entry.delete(0, tk.END)
+                entry.insert(0, file_path)
 
-    def add_config(self):
-        """Prompt to add a new app path."""
-        app_name = simpledialog.askstring("Input", "Enter app name:")
-        path = simpledialog.askstring("Input", "Enter the path:")
-        if app_name and path:
-            add_app_path(app_name, path)
-            self.refresh()
-            messagebox.showinfo("Success", f"Added path '{path}' for app '{app_name}'")
+        ttk.Button(frame, text="Browse", command=browse_path).pack(side='right', padx=5)
 
-    def remove_config(self):
-        """Prompt to remove a selected path."""
-        selected = self.listbox.get(tk.ACTIVE)
-        if selected:
-            app_name, path = selected.split(": ", 1)
-            remove_app_path(app_name, path)
-            self.refresh()
-            messagebox.showinfo("Success", f"Removed path '{path}' for app '{app_name}'")
+    def init_scripts_tab(self):
+        """Initialize the Scripts tab"""
+        self.script_tab = ttk.Frame(self.notebook)
+        self.notebook.add(self.script_tab, text='Scripts')
 
-    def edit_config(self):
-        """Prompt to edit a selected app path."""
-        selected = self.listbox.get(tk.ACTIVE)
-        if selected:
-            app_name, old_path = selected.split(": ", 1)
-            new_path = simpledialog.askstring("Input", f"Enter new path for '{app_name}':")
-            if new_path:
-                success = edit_app_path(app_name, old_path, new_path)
-                if success:
-                    self.refresh()
-                    messagebox.showinfo("Success", f"Updated path for app '{app_name}'")
-                else:
-                    messagebox.showerror("Error", f"Failed to update path for app '{app_name}'")
+        # Create script list
+        self.script_frame = ttk.LabelFrame(self.script_tab, text="Custom Scripts")
+        self.script_frame.pack(fill='both', expand=True, padx=5, pady=5)
+
+        # Script listbox with scrollbar
+        self.script_listbox = tk.Listbox(self.script_frame, width=50, height=15)
+        self.script_listbox.pack(side='left', fill='both', expand=True)
+
+        scrollbar = ttk.Scrollbar(self.script_frame, orient="vertical", command=self.script_listbox.yview)
+        scrollbar.pack(side='right', fill='y')
+        self.script_listbox.config(yscrollcommand=scrollbar.set)
+
+        # Buttons frame
+        button_frame = ttk.Frame(self.script_tab)
+        button_frame.pack(fill='x', padx=5, pady=5)
+
+        ttk.Button(button_frame, text="Add Script", command=self.add_script).pack(side='left', padx=5)
+        ttk.Button(button_frame, text="Remove Script", command=self.remove_script).pack(side='left', padx=5)
+
+        # Load existing scripts
+        self.load_scripts()
+
+    def init_settings_tab(self):
+        """Initialize the Settings tab"""
+        self.settings_tab = ttk.Frame(self.notebook)
+        self.notebook.add(self.settings_tab, text='Settings')
+
+        # Add general settings
+        settings_frame = ttk.LabelFrame(self.settings_tab, text="General Settings")
+        settings_frame.pack(fill='x', padx=5, pady=5)
+
+        # Default platform setting
+        ttk.Label(settings_frame, text="Default Platform:").grid(row=0, column=0, padx=5, pady=5)
+        self.platform_var = tk.StringVar(value=self.config_data.get('default_platform', 'windows'))
+        platform_combo = ttk.Combobox(settings_frame, textvariable=self.platform_var)
+        platform_combo['values'] = ('windows', 'darwin', 'linux')
+        platform_combo.grid(row=0, column=1, padx=5, pady=5)
+
+        # User token setting
+        ttk.Label(settings_frame, text="User Token:").grid(row=1, column=0, padx=5, pady=5)
+        self.token_entry = ttk.Entry(settings_frame, width=50)
+        self.token_entry.grid(row=1, column=1, padx=5, pady=5)
+        if 'user_token' in self.config_data:
+            self.token_entry.insert(0, self.config_data['user_token'])
+
+    def add_script(self):
+        """Add a new script to the configuration"""
+        file_path = filedialog.askopenfilename(
+            title="Select Script",
+            filetypes=(("Python files", "*.py"), ("All files", "*.*"))
+        )
+        if file_path:
+            self.script_listbox.insert(tk.END, file_path)
+
+    def remove_script(self):
+        """Remove selected script from the configuration"""
+        selection = self.script_listbox.curselection()
+        if selection:
+            self.script_listbox.delete(selection)
+
+    def load_config(self) -> Dict[str, Any]:
+        """Load the configuration file"""
+        try:
+            if os.path.exists(self.config_path):
+                with open(self.config_path, 'r') as f:
+                    return json.load(f)
+            return {}
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to load configuration: {str(e)}")
+            return {}
+
+    def load_scripts(self):
+        """Load existing scripts into the listbox"""
+        scripts = self.config_data.get('scripts', [])
+        for script in scripts:
+            self.script_listbox.insert(tk.END, script)
+
+    def save_config(self):
+        """Save the configuration"""
+        try:
+            # Update config data with current values
+            for platform, app_dict in self.app_entries.items():
+                self.config_data[platform] = {}
+                for app_name, entries in app_dict.items():
+                    # Filter out empty paths
+                    paths = [entry.get() for entry in entries if entry.get().strip()]
+                    if paths:  # Only save apps with at least one path
+                        self.config_data[platform][app_name] = paths
+
+            # Update scripts
+            self.config_data['scripts'] = list(self.script_listbox.get(0, tk.END))
+            
+            # Update settings
+            self.config_data['default_platform'] = self.platform_var.get()
+            self.config_data['user_token'] = self.token_entry.get()
+
+            # Save to file
+            os.makedirs(os.path.dirname(self.config_path), exist_ok=True)
+            with open(self.config_path, 'w') as f:
+                json.dump(self.config_data, f, indent=4)
+
+            messagebox.showinfo("Success", "Configuration saved successfully!")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to save configuration: {str(e)}")
+
+    def run(self):
+        """Start the GUI"""
+        self.root.mainloop()
 
 def run_gui():
-    """Run the Config GUI."""
-    root = tk.Tk()
-    app = ConfigGUI(root)
-    root.mainloop()
+    config_path = os.path.expanduser("~/.config/bylexa/config.json")
+    gui = ConfigGUI(config_path)
+    gui.run()
+
+if __name__ == "__main__":
+    run_gui()

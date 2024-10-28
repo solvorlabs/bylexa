@@ -2,4 +2,6 @@ click
 websockets
 requests
 PyJWT
-typing_extensions
+pyperclip
+schedule
+aioconsole

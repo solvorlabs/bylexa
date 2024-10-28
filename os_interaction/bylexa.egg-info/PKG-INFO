@@ -5,9 +5,12 @@ Summary: Control your PC using Bylexa voice commands.
 Home-page: https://github.com/exploring-solver/bylexa
 Author: exploring-solver
 License: MIT
+Requires-Python: >=3.6
 License-File: LICENSE
 Requires-Dist: click
 Requires-Dist: websockets
 Requires-Dist: requests
 Requires-Dist: PyJWT
-Requires-Dist: typing_extensions
+Requires-Dist: pyperclip
+Requires-Dist: schedule
+Requires-Dist: aioconsole

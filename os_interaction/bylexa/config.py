@@ -2,6 +2,7 @@ import os
 import jwt
 import json
 import sys
+from typing import Optional
 
 TOKEN_FILE = os.path.expanduser("~/.bylexa_token")  # Assuming the token is saved in the user's home directory
 JWT_SECRET = 'bylexa'  # This should match the secret used to sign the JWT

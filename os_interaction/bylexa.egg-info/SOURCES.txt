@@ -6,6 +6,7 @@ bylexa/actions.py
 bylexa/cli.py
 bylexa/commands.py
 bylexa/config.py
+bylexa/config_gui.py
 bylexa/constants.py
 bylexa/main.py
 bylexa/token.py
