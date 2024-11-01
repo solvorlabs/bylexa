@@ -15,46 +15,50 @@ You are an assistant that interprets user commands into structured JSON objects 
 - Read the following command: "${command}"
 - Extract relevant information and represent it as a JSON object.
 - Possible keys include:
-  - **action**: The primary action to perform (e.g., "open", "run", "copy", "delete", "move", "schedule", "play", "pause", "stop", "close").
-  - **application**: The application involved (e.g., "browser", "notepad", "media player").
+  whenever a script is mentioned pass the action as "script" and name of script in "script_name"
+  - **action**: The primary action to perform (e.g., "open", "run", "script", "copy", "delete", "move", "schedule", "media", "close").
+  - **application**: The application name involved (e.g., "notepad", "media player", "any application name give in command").
   - **task**: Specific task or URL (e.g., "google.com", "write a letter").
   - **file_path**: Path to a file or directory.
   - **command_line**: Command-line instruction to execute.
-  - **script_path**: Path to a script file.
-  - **args**: List of arguments for scripts or commands.
+  - **script_name**: Name of the custom script to execute (used with action: "script").
+  - **args**: Array of arguments/parameters for scripts (e.g., ["--input", "file.txt", "--verbose"]).
   - **time**: Time for scheduling tasks (e.g., "5 PM", "2023-10-01 14:00").
-  - **media_action**: Action related to media control (e.g., "play", "pause").
-  - **media**: Media file or stream to play.
+  - **media_action**: Action for media control (e.g., "play", "pause", "stop", "forward", "rewind", "volume_up", "volume_down", "mute", "seek").
+  - **media**: Media file, stream, or player to control.
+  - **seek_time**: Time in seconds to seek forward/backward (e.g., 30 for 30 seconds).
+  - **volume_level**: Volume level for media (0-100).
   - **clipboard_action**: Action for clipboard (e.g., "copy", "paste").
-  - **text**: Text to copy to or paste from the clipboard.
+  - **text**: Text to copy to or paste from clipboard.
   - **file_action**: File operation (e.g., "copy", "move", "delete", "create_directory").
   - **source**: Source path for file operations.
   - **destination**: Destination path for file operations.
 
-- If a parameter is not applicable or not mentioned, you may omit it.
-- **Do not include any explanations or extra text.**
+- If a parameter is not applicable or not mentioned, omit it.
 - **Output the result as minified JSON only.**
 
 **Examples:**
 
-1. **Command**: "Open the browser and go to google.com"
-   **Output**: {"action":"open","application":"browser","task":"google.com"}
+1. **Command**: "Run the backup script with verbose mode and target directory /data"
+   **Output**: {"action":"script","script_name":"backup","args":["--verbose","--target","/data"]}
 
-2. **Command**: "Run the command ls -la"
-   **Output**: {"action":"run","command_line":"ls -la"}
+2. **Command**: "Fast forward the media player by 30 seconds"
+   **Output**: {"action":"media","media_action":"forward","seek_time":30}
 
-3. **Command**: "Copy the file from /user/docs to /backup/docs"
-   **Output**: {"action":"file","file_action":"copy","source":"/user/docs","destination":"/backup/docs"}
+3. **Command**: "Set media volume to 75 percent"
+   **Output**: {"action":"media","media_action":"volume","volume_level":75}
 
-4. **Command**: "Schedule a task to run backup.sh at 2 AM"
-   **Output**: {"action":"schedule","task_command":{"action":"run","script_path":"backup.sh"},"time":"2 AM"}
+4. **Command**: "Run data processing script with input file data.csv and output file result.json"
+   **Output**: {"action":"script","script_name":"data_processing","args":["--input","data.csv","--output","result.json"]}
 
-5. **Command**: "Play the song song.mp3"
-   **Output**: {"action":"media","media_action":"play","media":"song.mp3"}
+5. **Command**: "Pause the current media"
+   **Output**: {"action":"media","media_action":"pause"}
+
+6. **Command**: "Run network diagnostic script with retry count 3 and verbose logging"
+   **Output**: {"action":"script","script_name":"network_diagnostic","args":["--retries","3","--verbose"]}
 
 Now, interpret the following command and provide the JSON output.
 `;
-
 
   try {
     console.log(`Sending prompt to LLM: ${prompt}`);
@@ -72,22 +76,29 @@ Now, interpret the following command and provide the JSON output.
     const interpretedCommand = JSON.parse(responseText);
     console.log('Interpreted command:', interpretedCommand);
 
-    // Check if required fields are present
+    // Validate required fields based on action type
     if (!interpretedCommand.action) {
       return { success: false, message: "Error: 'action' not specified in command." };
+    }
+
+    // Additional validation for script commands
+    if (interpretedCommand.action === 'script' && !interpretedCommand.script_name) {
+      return { success: false, message: "Error: 'script_name' required for script action." };
+    }
+
+    // Additional validation for media commands
+    if (interpretedCommand.action === 'media' && !interpretedCommand.media_action) {
+      return { success: false, message: "Error: 'media_action' required for media action." };
     }
 
     return { success: true, command: interpretedCommand };
   } catch (error) {
     console.error('Error interpreting command:', error);
 
-    // Check if the error is a JSON parsing error and return a safe fallback
     if (error instanceof SyntaxError || error.message.includes('Unexpected token')) {
-      console.log("Returning fallback message: Sorry, I didn’t get that. Please try again.");
-      return { success: false, message: 'Sorry, I didn’t get that. Please try again.' };
+      return { success: false, message: 'Sorry, I didn\'t get that. Please try again.' };
     }
 
-    // Return a generic failure message for other errors without throwing
     return { success: false, message: 'Failed to interpret the command.' };
   }
 };

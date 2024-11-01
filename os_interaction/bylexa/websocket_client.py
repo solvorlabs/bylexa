@@ -6,8 +6,8 @@ from .config import load_email, load_token
 import sys
 import aioconsole
 
-# WEBSOCKET_SERVER_URL = 'ws://localhost:3000/ws'
-WEBSOCKET_SERVER_URL = 'wss://bylexa.onrender.com/ws'
+WEBSOCKET_SERVER_URL = 'ws://localhost:3000/ws'
+# WEBSOCKET_SERVER_URL = 'wss://bylexa.onrender.com/ws'
 
 async def listen(token, room_code=None):
     """Listen for commands and join a room if a room_code is provided."""
@@ -112,7 +112,7 @@ async def handle_server_messages(websocket):
             raise
 
 async def main():
-    token = load_token()
+    token = load_token() 
     if not token:
         print("No token found. Please run 'bylexa login' to authenticate.")
         return

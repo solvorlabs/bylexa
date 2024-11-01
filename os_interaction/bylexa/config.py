@@ -2,12 +2,12 @@ import os
 import jwt
 import json
 import sys
-from typing import Optional
+from typing import Optional, Dict, List, Any
 
-TOKEN_FILE = os.path.expanduser("~/.bylexa_token")  # Assuming the token is saved in the user's home directory
-JWT_SECRET = 'bylexa'  # This should match the secret used to sign the JWT
+TOKEN_FILE = os.path.expanduser("~/.bylexa_token")
+JWT_SECRET = 'bylexa'
 
-
+# Updated DEFAULT_APP_CONFIGS to include custom_scripts
 DEFAULT_APP_CONFIGS = {
     "windows": {
         "chrome": [
@@ -30,66 +30,146 @@ DEFAULT_APP_CONFIGS = {
         "firefox": ["firefox"],
         "text_editor": ["gedit", "nano", "vim"],
     },
+    "custom_scripts": {}  # New section for custom scripts
 }
 
 CONFIG_FILE = os.path.expanduser("~/.bylexa_config.json")
 
 def get_platform() -> str:
-    """Detect the current operating system."""
     platforms = {
         'linux': 'linux',
         'win32': 'windows',
-        'darwin': 'macos'
+        'darwin': 'darwin'
     }
-    return platforms.get(os.sys.platform, 'unknown')
+    return platforms.get(sys.platform, 'unknown')
 
 def load_app_configs() -> dict:
-    """Load application configurations from .bylexa_config.json."""
-    config_path = os.path.expanduser('~/.bylexa_config.json')
-    if not os.path.exists(config_path):
-        return {}
-    with open(config_path, 'r') as f:
-        return json.load(f)
+    """Load application configurations from config file."""
+    try:
+        if os.path.exists(CONFIG_FILE):
+            with open(CONFIG_FILE, 'r') as f:
+                return json.load(f)
+        return DEFAULT_APP_CONFIGS.copy()
+    except Exception as e:
+        print(f"Error loading config: {e}")
+        return DEFAULT_APP_CONFIGS.copy()
 
 def save_app_configs(app_configs: dict):
-    """Save application configurations to .bylexa_config.json."""
-    config_path = os.path.expanduser('~/.bylexa_config.json')
-    with open(config_path, 'w') as f:
-        json.dump(app_configs, f, indent=4)
+    """Save application configurations to config file."""
+    try:
+        os.makedirs(os.path.dirname(CONFIG_FILE), exist_ok=True)
+        with open(CONFIG_FILE, 'w') as f:
+            json.dump(app_configs, f, indent=4)
+    except Exception as e:
+        print(f"Error saving config: {e}")
 
-# Functions to add or remove paths can be added as needed
-def add_app_path(app_name: str, path: str):
-    app_configs = load_app_configs()
-    platform = get_platform()
-    if platform not in app_configs:
-        app_configs[platform] = {}
-    if app_name not in app_configs[platform]:
-        app_configs[platform][app_name] = []
-    app_configs[platform][app_name].append(path)
-    save_app_configs(app_configs)
+# Enhanced CRUD operations for applications
+def add_app_path(platform: str, app_name: str, path: str) -> bool:
+    """Add an application path to the configuration."""
+    try:
+        app_configs = load_app_configs()
+        if platform not in app_configs:
+            app_configs[platform] = {}
+        if app_name not in app_configs[platform]:
+            app_configs[platform][app_name] = []
+        if path not in app_configs[platform][app_name]:
+            app_configs[platform][app_name].append(path)
+            save_app_configs(app_configs)
+        return True
+    except Exception as e:
+        print(f"Error adding app path: {e}")
+        return False
 
-def edit_app_path(app_name: str, old_path: str, new_path: str):
-    """Edit an existing path in the configuration."""
-    app_configs = load_app_configs()
-    platform = get_platform()
-    if platform in app_configs and app_name in app_configs[platform]:
-        try:
-            index = app_configs[platform][app_name].index(old_path)
-            app_configs[platform][app_name][index] = new_path
+def remove_app_path(platform: str, app_name: str, path: str) -> bool:
+    """Remove an application path from the configuration."""
+    try:
+        app_configs = load_app_configs()
+        if platform in app_configs and app_name in app_configs[platform]:
+            if path in app_configs[platform][app_name]:
+                app_configs[platform][app_name].remove(path)
+                if not app_configs[platform][app_name]:
+                    del app_configs[platform][app_name]
+                save_app_configs(app_configs)
+                return True
+        return False
+    except Exception as e:
+        print(f"Error removing app path: {e}")
+        return False
+
+def update_app_path(platform: str, app_name: str, old_path: str, new_path: str) -> bool:
+    """Update an application path in the configuration."""
+    try:
+        app_configs = load_app_configs()
+        if platform in app_configs and app_name in app_configs[platform]:
+            if old_path in app_configs[platform][app_name]:
+                idx = app_configs[platform][app_name].index(old_path)
+                app_configs[platform][app_name][idx] = new_path
+                save_app_configs(app_configs)
+                return True
+        return False
+    except Exception as e:
+        print(f"Error updating app path: {e}")
+        return False
+
+def get_app_paths(platform: str, app_name: str) -> List[str]:
+    """Get all paths for a specific application."""
+    try:
+        app_configs = load_app_configs()
+        return app_configs.get(platform, {}).get(app_name, [])
+    except Exception as e:
+        print(f"Error getting app paths: {e}")
+        return []
+
+# Custom scripts CRUD operations
+def add_custom_script(name: str, path: str) -> bool:
+    """Add a custom script to the configuration."""
+    try:
+        app_configs = load_app_configs()
+        if 'custom_scripts' not in app_configs:
+            app_configs['custom_scripts'] = {}
+        app_configs['custom_scripts'][name] = path
+        save_app_configs(app_configs)
+        return True
+    except Exception as e:
+        print(f"Error adding custom script: {e}")
+        return False
+
+def remove_custom_script(name: str) -> bool:
+    """Remove a custom script from the configuration."""
+    try:
+        app_configs = load_app_configs()
+        if 'custom_scripts' in app_configs and name in app_configs['custom_scripts']:
+            del app_configs['custom_scripts'][name]
             save_app_configs(app_configs)
             return True
-        except ValueError:
-            return False
-    return False
+        return False
+    except Exception as e:
+        print(f"Error removing custom script: {e}")
+        return False
 
-def remove_app_path(app_name: str, path: str):
-    app_configs = load_app_configs()
-    platform = get_platform()
-    if platform in app_configs and app_name in app_configs[platform]:
-        if path in app_configs[platform][app_name]:
-            app_configs[platform][app_name].remove(path)
+def update_custom_script(name: str, new_path: str) -> bool:
+    """Update a custom script path in the configuration."""
+    try:
+        app_configs = load_app_configs()
+        if 'custom_scripts' in app_configs and name in app_configs['custom_scripts']:
+            app_configs['custom_scripts'][name] = new_path
             save_app_configs(app_configs)
+            return True
+        return False
+    except Exception as e:
+        print(f"Error updating custom script: {e}")
+        return False
 
+def get_custom_scripts() -> Dict[str, str]:
+    """Get all custom scripts from the configuration."""
+    try:
+        app_configs = load_app_configs()
+        return app_configs.get('custom_scripts', {})
+    except Exception as e:
+        print(f"Error getting custom scripts: {e}")
+        return {}
+
+# Token management functions remain the same
 def save_token(token):
     """Save the token to a file."""
     with open(TOKEN_FILE, 'w') as f:
@@ -110,57 +190,12 @@ def load_email():
         return None
 
     try:
-        # Decode the token and extract the payload
         decoded_token = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
         email = decoded_token.get('email')
-        if email:
-            return email
-        else:
-            print("Email not found in the token.")
-            return None
+        return email if email else None
     except jwt.ExpiredSignatureError:
         print("Token has expired. Please log in again.")
         return None
     except jwt.InvalidTokenError:
         print("Invalid token. Please log in again.")
         return None
-
-
-CUSTOM_SCRIPTS_KEY = 'custom_scripts'
-
-def add_custom_script(script_name: str, script_path: str):
-    """Add a custom script path."""
-    app_configs = load_app_configs()
-    platform = get_platform()
-    if platform not in app_configs:
-        app_configs[platform] = {}
-    if CUSTOM_SCRIPTS_KEY not in app_configs[platform]:
-        app_configs[platform][CUSTOM_SCRIPTS_KEY] = {}
-    app_configs[platform][CUSTOM_SCRIPTS_KEY][script_name] = script_path
-    save_app_configs(app_configs)
-
-def remove_custom_script(script_name: str):
-    """Remove a custom script."""
-    app_configs = load_app_configs()
-    platform = get_platform()
-    if platform in app_configs and CUSTOM_SCRIPTS_KEY in app_configs[platform]:
-        if script_name in app_configs[platform][CUSTOM_SCRIPTS_KEY]:
-            del app_configs[platform][CUSTOM_SCRIPTS_KEY][script_name]
-            save_app_configs(app_configs)
-
-def edit_custom_script(script_name: str, new_script_path: str):
-    """Edit the path of an existing custom script."""
-    app_configs = load_app_configs()
-    platform = get_platform()
-    if platform in app_configs and CUSTOM_SCRIPTS_KEY in app_configs[platform]:
-        if script_name in app_configs[platform][CUSTOM_SCRIPTS_KEY]:
-            app_configs[platform][CUSTOM_SCRIPTS_KEY][script_name] = new_script_path
-            save_app_configs(app_configs)
-            return True
-    return False
-
-def get_custom_script_path(script_name: str) -> Optional[str]:
-    """Get the path of a custom script by name."""
-    app_configs = load_app_configs()
-    platform = get_platform()
-    return app_configs.get(platform, {}).get(CUSTOM_SCRIPTS_KEY, {}).get(script_name)

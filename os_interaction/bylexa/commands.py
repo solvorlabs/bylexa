@@ -1,5 +1,5 @@
 from typing import Dict, Callable
-from .config import get_platform
+from .config import get_platform, get_custom_scripts
 from .actions import (
     open_application,
     run_shell_command,
@@ -12,6 +12,7 @@ from .actions import (
 )
 import json
 import os
+from difflib import get_close_matches
 
 # Registry for command handlers
 COMMAND_HANDLERS: Dict[str, Callable] = {}
@@ -43,18 +44,46 @@ def handle_open_command(command: Dict[str, str]) -> str:
         return "Error: 'application' not specified in command."
     return open_application(app, task)
 
-@register_command("custom_script")
+@register_command("script")
 def handle_custom_script_command(command: Dict[str, str]) -> str:
+    print("Received command:", command)
+
     script_name = command.get('script_name')
     args = command.get('args', [])
+    
+    print("Script name:", script_name)
+    print("Arguments:", args)
+
     if not script_name:
+        print("Error: 'script_name' not specified.")
         return "Error: 'script_name' not specified."
     
-    script_path = get_custom_script_path(script_name)
-    if not script_path:
-        return f"Error: Script '{script_name}' not found in configured paths."
+    # Load custom scripts from configuration
+    print("Loading custom scripts from configuration...")
+    custom_scripts = get_custom_scripts()
+    print("Custom scripts loaded:", custom_scripts)
+
+    # Find the closest match for the requested script name
+    print("Finding closest match for script name:", script_name)
+    closest_matches = get_close_matches(script_name, custom_scripts.keys(), n=1, cutoff=0.5)
+    print("Closest matches found:", closest_matches)
+
+    if not closest_matches:
+        print(f"Error: Script '{script_name}' not found.")
+        return f"Error: Script '{script_name}' not found."
     
-    return perform_custom_script(script_path, args)
+    # Get the best match script path
+    best_match_script_name = closest_matches[0]
+    script_path = custom_scripts[best_match_script_name]
+    print("Best match script name:", best_match_script_name)
+    print("Script path:", script_path)
+    
+    # Run the script with the specified arguments
+    print("Running script:", script_path, "with arguments:", args)
+    result = perform_custom_script(script_path, args)
+    print("Script result:", result)
+    
+    return result
 
 @register_command("run")
 def handle_run_command(command: Dict[str, str]) -> str:
@@ -87,19 +116,62 @@ def handle_schedule_command(command: Dict[str, str]) -> str:
 
 @register_command("media")
 def handle_media_command(command: Dict[str, str]) -> str:
+    """
+    Handle media control commands with enhanced functionality.
+    
+    Supports:
+    - Basic media controls (play, pause, stop)
+    - Seeking (forward/rewind)
+    - Volume control (up, down, mute, specific level)
+    - Media file playback
+    
+    Args:
+        command: Dictionary containing media control parameters
+            - media_action: Required. The action to perform
+            - media: Optional. Media file or stream to play
+            - seek_time: Optional. Time in seconds for seeking
+            - volume_level: Optional. Volume level (0-100)
+    
+    Returns:
+        str: Status message indicating the result of the operation
+    """
     action = command.get('media_action')
     media = command.get('media')
+    seek_time = command.get('seek_time')
+    volume_level = command.get('volume_level')
+    
     if not action:
         return "Error: 'media_action' not specified."
-    return control_media_player(action, media)
+    
+    # Convert seek_time and volume_level to appropriate types if present
+    if seek_time is not None:
+        try:
+            seek_time = int(seek_time)
+        except ValueError:
+            return "Error: 'seek_time' must be a valid number."
+            
+    if volume_level is not None:
+        try:
+            volume_level = int(volume_level)
+            if not 0 <= volume_level <= 100:
+                return "Error: 'volume_level' must be between 0 and 100."
+        except ValueError:
+            return "Error: 'volume_level' must be a valid number."
+    
+    return control_media_player(
+        action=action,
+        media=media,
+        seek_time=seek_time,
+        volume_level=volume_level
+    )
 
-@register_command("script")
-def handle_script_command(command: Dict[str, str]) -> str:
-    script_path = command.get('script_path')
-    args = command.get('args', [])
-    if not script_path:
-        return "Error: 'script_path' not specified."
-    return perform_custom_script(script_path, args)
+# @register_command("script")
+# def handle_script_command(command: Dict[str, str]) -> str:
+#     script_path = command.get('script_path')
+#     args = command.get('args', [])
+#     if not script_path:
+#         return "Error: 'script_path' not specified."
+#     return perform_custom_script(script_path, args)
 
 @register_command("close")
 def handle_close_command(command: Dict[str, str]) -> str:

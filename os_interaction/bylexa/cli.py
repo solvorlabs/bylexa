@@ -2,7 +2,7 @@
 import click
 from .token import login as do_login
 from .websocket_client import start_client
-from .config_gui import run_gui  # Import the run_gui function from config_gui
+from .config_gui import run_gui
 
 @click.group()
 def main():

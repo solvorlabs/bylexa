@@ -134,10 +134,208 @@ def open_document(file_path: str) -> str:
     except Exception as e:
         return f"Error opening document: {str(e)}"
 
-def control_media_player(action: str, media: Optional[str] = None) -> str:
-    """Control media player actions like play, pause, stop."""
-    # Placeholder implementation, extend with actual media player control
-    return f"Media player action '{action}' executed."
+
+def control_media_player(action: str, media: str = None, seek_time: int = None, volume_level: int = None) -> str:
+    """
+    Control media playback with enhanced functionality.
+    
+    Args:
+        action: The media control action to perform
+        media: Optional media file or stream to play
+        seek_time: Number of seconds to seek forward/backward
+        volume_level: Volume level (0-100)
+        
+    Returns:
+        str: Status message indicating the result of the operation
+    """
+    try:
+        print("Determining platform...")
+        platform = get_platform()
+        print(f"Platform detected: {platform}")
+
+        if platform == 'windows':
+            print("Running on Windows platform.")
+            try:
+                import win32api
+                import win32con
+            except ImportError:
+                return "Error: 'pywin32' library is required on Windows for media control."
+
+            # Virtual key mappings for media control
+            VK_MEDIA_PLAY_PAUSE = 0xB3
+            VK_MEDIA_NEXT_TRACK = 0xB0
+            VK_MEDIA_PREV_TRACK = 0xB1
+            VK_VOLUME_UP = 0xAF
+            VK_VOLUME_DOWN = 0xAE
+            VK_VOLUME_MUTE = 0xAD
+            
+            print(f"Action requested: {action}")
+
+            if action == "play":
+                # Check if "media" specifies next or previous track
+                if media == "next":
+                    print("Playing next track.")
+                    win32api.keybd_event(VK_MEDIA_NEXT_TRACK, 0, 0, 0)
+                    return "Next track played"
+                elif media == "previous":
+                    print("Playing previous track.")
+                    win32api.keybd_event(VK_MEDIA_PREV_TRACK, 0, 0, 0)
+                    return "Previous track played"
+                elif media:
+                    # If media is specified as a file, attempt to play it
+                    print(f"Attempting to play media file: {media}")
+                    os.startfile(media)
+                    return f"Playing {media}"
+                else:
+                    # Toggle play/pause if no specific media is specified
+                    print("Attempting to toggle play/pause.")
+                    win32api.keybd_event(VK_MEDIA_PLAY_PAUSE, 0, 0, 0)
+                    return "Media playback started"
+                    
+            elif action == "pause":
+                print("Attempting to pause media.")
+                win32api.keybd_event(VK_MEDIA_PLAY_PAUSE, 0, 0, 0)
+                return "Media playback paused"
+                
+            elif action == "stop":
+                print("Attempting to stop media.")
+                win32api.keybd_event(VK_MEDIA_PLAY_PAUSE, 0, 0, 0)
+                win32api.keybd_event(VK_MEDIA_PLAY_PAUSE, 0, 0, 0)
+                return "Media playback stopped"
+                
+            elif action == "forward":
+                if seek_time:
+                    print(f"Attempting to seek forward within the track by {seek_time} seconds.")
+                    # Placeholder: Implement seeking if specific player allows it, otherwise use next track as fallback
+                    # Note: Implement specific player integration if needed
+                    win32api.keybd_event(VK_MEDIA_NEXT_TRACK, 0, 0, 0)
+                    return f"Sought forward {seek_time} seconds"
+                    
+            elif action == "rewind":
+                if seek_time:
+                    print(f"Attempting to seek backward within the track by {seek_time} seconds.")
+                    # Placeholder: Implement seeking if specific player allows it, otherwise use previous track as fallback
+                    win32api.keybd_event(VK_MEDIA_PREV_TRACK, 0, 0, 0)
+                    # Note: Implement specific player integration if needed
+                    return f"Sought backward {seek_time} seconds"
+
+            elif action == "next":
+                print("Playing next track.")
+                win32api.keybd_event(VK_MEDIA_NEXT_TRACK, 0, 0, 0)
+                return "Next track played"
+
+            elif action == "previous":
+                print("Playing previous track.")
+                win32api.keybd_event(VK_MEDIA_PREV_TRACK, 0, 0, 0)
+                return "Previous track played"
+
+            elif action == "volume":
+                if volume_level is not None:
+                    print(f"Setting volume to {volume_level}%.")
+                    try:
+                        from ctypes import cast, POINTER
+                        from comtypes import CLSCTX_ALL
+                        from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
+                    except ImportError:
+                        return "Error: 'pycaw' and 'comtypes' libraries are required for volume control."
+
+                    devices = AudioUtilities.GetSpeakers()
+                    interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
+                    volume = cast(interface, POINTER(IAudioEndpointVolume))
+                    
+                    scalar_volume = max(0.0, min(1.0, volume_level / 100.0))
+                    volume.SetMasterVolumeLevelScalar(scalar_volume, None)
+                    return f"Volume set to {volume_level}%"
+                    
+            elif action == "volume_up":
+                print("Increasing volume.")
+                win32api.keybd_event(VK_VOLUME_UP, 0, 0, 0)
+                return "Volume increased"
+                
+            elif action == "volume_down":
+                print("Decreasing volume.")
+                win32api.keybd_event(VK_VOLUME_DOWN, 0, 0, 0)
+                return "Volume decreased"
+                
+            elif action == "mute":
+                print("Muting volume.")
+                win32api.keybd_event(VK_VOLUME_MUTE, 0, 0, 0)
+                return "Volume muted"
+
+        else:
+            # For Linux/macOS systems
+            print("Running on Linux/macOS platform.")
+            print(f"Action requested: {action}")
+
+            if action == "play":
+                if media:
+                    print(f"Attempting to play media file: {media}")
+                    os.system(f"xdg-open '{media}'")  # Linux
+                    return f"Playing {media}"
+                else:
+                    print("Attempting to start playback using playerctl.")
+                    os.system("playerctl play")
+                    return "Media playback started"
+                    
+            elif action == "pause":
+                print("Attempting to pause playback using playerctl.")
+                os.system("playerctl pause")
+                return "Media playback paused"
+                
+            elif action == "stop":
+                print("Attempting to stop playback using playerctl.")
+                os.system("playerctl stop")
+                return "Media playback stopped"
+                
+            elif action == "forward":
+                if seek_time:
+                    print(f"Seeking forward {seek_time} seconds.")
+                    os.system(f"playerctl position {seek_time}+")
+                    return f"Sought forward {seek_time} seconds"
+                    
+            elif action == "rewind":
+                if seek_time:
+                    print(f"Seeking backward {seek_time} seconds.")
+                    os.system(f"playerctl position {seek_time}-")
+                    return f"Sought backward {seek_time} seconds"
+
+            elif action == "next":
+                print("Playing next track.")
+                os.system("playerctl next")
+                return "Next track played"
+
+            elif action == "previous":
+                print("Playing previous track.")
+                os.system("playerctl previous")
+                return "Previous track played"
+
+            elif action == "volume":
+                if volume_level is not None:
+                    print(f"Setting volume to {volume_level}%.")
+                    os.system(f"amixer set Master {volume_level}%")
+                    return f"Volume set to {volume_level}%"
+                    
+            elif action == "volume_up":
+                print("Increasing volume using amixer.")
+                os.system("amixer set Master 5%+")
+                return "Volume increased"
+                
+            elif action == "volume_down":
+                print("Decreasing volume using amixer.")
+                os.system("amixer set Master 5%-")
+                return "Volume decreased"
+                
+            elif action == "mute":
+                print("Muting volume using amixer.")
+                os.system("amixer set Master toggle")
+                return "Volume muted"
+        
+        print("Action completed successfully.")
+        return f"Media action '{action}' completed successfully"
+        
+    except Exception as e:
+        print(f"An error occurred: {str(e)}")
+        return f"Error controlling media player: {str(e)}"
 
 def perform_custom_script(script_path: str, args: Optional[list] = None) -> str:
     """Execute a custom script with optional arguments."""
@@ -145,10 +343,21 @@ def perform_custom_script(script_path: str, args: Optional[list] = None) -> str:
         return f"Script '{script_path}' does not exist."
 
     try:
-        command = ['python', script_path] + (args if args else [])
-        subprocess.Popen(command)
-        return f"Executed script '{script_path}'"
+        # Ensure args is a list
+        command = ['python', script_path] + (args if isinstance(args, list) else [])
+        print("Executing command:", command)  # Debugging print statement
+
+        # Run the command
+        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        stdout, stderr = process.communicate()
+
+        # Return the result or an error message
+        if process.returncode == 0:
+            return stdout or "Script executed successfully with no output."
+        else:
+            return f"Error executing script: {stderr.strip()}"
     except Exception as e:
         return f"Error executing script: {str(e)}"
+
 
 # Add more functions for additional features as needed
