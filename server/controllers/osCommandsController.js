@@ -6,10 +6,12 @@ const genAI = new GoogleGenerativeAI(process.env.API_KEY_12607);
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 const jwt = require('jsonwebtoken');
 
+
+//Todo : single command based output to reduce redundancy and optimize the workflow
 const interpretCommand = async (command) => {
   const prompt = `
 You are an assistant that interprets user commands into structured JSON objects for execution.
-
+enter all urls with https untill mentioned explicitly to be http or something else
 **Instructions:**
 
 - Read the following command: "${command}"
@@ -22,7 +24,8 @@ You are an assistant that interprets user commands into structured JSON objects 
   - **file_path**: Path to a file or directory.
   - **command_line**: Command-line instruction to execute.
   - **script_name**: Name of the custom script to execute (used with action: "script").
-  - **args**: Array of arguments/parameters for scripts (e.g., ["--input", "file.txt", "--verbose"]).
+  write everything in small character in key and value
+  - **args**: Array of arguments/parameters for scripts (e.g., ["--input", "file.txt", "--verbose"]). and if there is aruement with a key and value then pass as [{"key1_name":"value1", {"key2_name":"value2"}, {"key3_name":"value3"}]
   - **time**: Time for scheduling tasks (e.g., "5 PM", "2023-10-01 14:00").
   - **media_action**: Action for media control (e.g., "play", "pause", "stop", "forward", "rewind", "volume_up", "volume_down", "mute", "seek").
   - **media**: Media file, stream, or player to control.

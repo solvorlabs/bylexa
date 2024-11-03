@@ -1,6 +1,6 @@
 import os
 import subprocess
-from typing import Optional
+from typing import Optional, Dict, List
 from .config import get_platform, load_app_configs
 import shutil
 import glob
@@ -337,18 +337,37 @@ def control_media_player(action: str, media: str = None, seek_time: int = None, 
         print(f"An error occurred: {str(e)}")
         return f"Error controlling media player: {str(e)}"
 
-def perform_custom_script(script_path: str, args: Optional[list] = None) -> str:
-    """Execute a custom script with optional arguments."""
+def perform_custom_script(
+    script_path: str,
+    args: Optional[List[str]] = None,
+    parameters: Optional[Dict[str, str]] = None
+) -> str:
+    """Execute a custom script with optional arguments and parameters."""
     if not os.path.exists(script_path):
         return f"Script '{script_path}' does not exist."
 
     try:
-        # Ensure args is a list
-        command = ['python', script_path] + (args if isinstance(args, list) else [])
+        # Start with base command
+        command = ['python', script_path]
+
+        # Add regular args if they exist
+        if args:
+            command.extend(args)
+
+        # Add parameters as key=value pairs if they exist
+        if parameters:
+            for key, value in parameters.items():
+                command.append(f"{key}={value}")
+
         print("Executing command:", command)  # Debugging print statement
 
         # Run the command
-        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        process = subprocess.Popen(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
         stdout, stderr = process.communicate()
 
         # Return the result or an error message
@@ -360,4 +379,10 @@ def perform_custom_script(script_path: str, args: Optional[list] = None) -> str:
         return f"Error executing script: {str(e)}"
 
 
+def parse_parameter_arg(arg: str) -> tuple:
+    """Parse a parameter argument in the format key=value."""
+    if '=' in arg:
+        key, value = arg.split('=', 1)
+        return key.strip(), value.strip()
+    return None, None
 # Add more functions for additional features as needed

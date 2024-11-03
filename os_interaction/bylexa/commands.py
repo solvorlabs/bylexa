@@ -1,4 +1,4 @@
-from typing import Dict, Callable
+from typing import Dict, Callable, Any, List
 from .config import get_platform, get_custom_scripts
 from .actions import (
     open_application,
@@ -9,10 +9,12 @@ from .actions import (
     open_document,
     control_media_player,
     perform_custom_script,
+    parse_parameter_arg
 )
 import json
 import os
 from difflib import get_close_matches
+from .script_manager import init_script_manager, get_script_manager
 
 # Registry for command handlers
 COMMAND_HANDLERS: Dict[str, Callable] = {}
@@ -45,18 +47,42 @@ def handle_open_command(command: Dict[str, str]) -> str:
     return open_application(app, task)
 
 @register_command("script")
-def handle_custom_script_command(command: Dict[str, str]) -> str:
+def handle_custom_script_command(command: Dict[str, Any]) -> str:
+    """
+    Handles script execution commands with automatic WebDriver session management.
+    """
     print("Received command:", command)
 
     script_name = command.get('script_name')
     args = command.get('args', [])
+    parameters = {}
     
+    # Prepare args as list of strings
+    flattened_args = []
+    for arg in args:
+        if isinstance(arg, dict):
+            for key, value in arg.items():
+                flattened_args.append(f"--{key}")
+                flattened_args.append(str(value))
+        elif isinstance(arg, str):
+            flattened_args.append(arg)
+        else:
+            print(f"Unhandled argument type: {type(arg)}")
+            continue
+    
+    # Include any parameters directly specified in the command
+    if 'parameters' in command:
+        parameters.update(command['parameters'])
+
     print("Script name:", script_name)
-    print("Arguments:", args)
+    print("Arguments:", flattened_args)
+    print("Parameters:", parameters)
 
     if not script_name:
-        print("Error: 'script_name' not specified.")
         return "Error: 'script_name' not specified."
+    
+    # Get the script manager instance
+    script_manager = get_script_manager()
     
     # Load custom scripts from configuration
     print("Loading custom scripts from configuration...")
@@ -65,22 +91,19 @@ def handle_custom_script_command(command: Dict[str, str]) -> str:
 
     # Find the closest match for the requested script name
     print("Finding closest match for script name:", script_name)
-    closest_matches = get_close_matches(script_name, custom_scripts.keys(), n=1, cutoff=0.5)
+    closest_matches = get_close_matches(script_name.lower(), custom_scripts.keys(), n=1, cutoff=0.5)
     print("Closest matches found:", closest_matches)
 
     if not closest_matches:
-        print(f"Error: Script '{script_name}' not found.")
         return f"Error: Script '{script_name}' not found."
     
     # Get the best match script path
     best_match_script_name = closest_matches[0]
     script_path = custom_scripts[best_match_script_name]
-    print("Best match script name:", best_match_script_name)
-    print("Script path:", script_path)
     
-    # Run the script with the specified arguments
-    print("Running script:", script_path, "with arguments:", args)
-    result = perform_custom_script(script_path, args)
+    # Run the script with the specified arguments and parameters
+    print("Running script:", script_path, "with arguments:", flattened_args, "and parameters:", parameters)
+    result = script_manager.perform_script(script_path, flattened_args, parameters)
     print("Script result:", result)
     
     return result
