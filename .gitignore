@@ -1,5 +1,5 @@
 *node_modules*
-*.env*
+*.env
 /test
 *__pycache__
 os_interaction/build
