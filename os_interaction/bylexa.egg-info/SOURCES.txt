@@ -9,6 +9,7 @@ bylexa/config.py
 bylexa/config_gui.py
 bylexa/constants.py
 bylexa/main.py
+bylexa/script_manager.py
 bylexa/token.py
 bylexa/websocket_client.py
 bylexa.egg-info/PKG-INFO

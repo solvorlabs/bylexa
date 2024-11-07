@@ -1,5 +1,5 @@
 from typing import Dict, Callable, Any, List
-from .config import get_platform, get_custom_scripts
+from .config import get_platform, get_custom_scripts, ensure_script_manager
 from .actions import (
     open_application,
     run_shell_command,
@@ -51,62 +51,71 @@ def handle_custom_script_command(command: Dict[str, Any]) -> str:
     """
     Handles script execution commands with automatic WebDriver session management.
     """
-    print("Received command:", command)
+    try:
+        print("Received command:", command)
 
-    script_name = command.get('script_name')
-    args = command.get('args', [])
-    parameters = {}
-    
-    # Prepare args as list of strings
-    flattened_args = []
-    for arg in args:
-        if isinstance(arg, dict):
-            for key, value in arg.items():
-                flattened_args.append(f"--{key}")
-                flattened_args.append(str(value))
-        elif isinstance(arg, str):
-            flattened_args.append(arg)
-        else:
-            print(f"Unhandled argument type: {type(arg)}")
-            continue
-    
-    # Include any parameters directly specified in the command
-    if 'parameters' in command:
-        parameters.update(command['parameters'])
+        # Ensure script manager is initialized
+        ensure_script_manager()
 
-    print("Script name:", script_name)
-    print("Arguments:", flattened_args)
-    print("Parameters:", parameters)
+        script_name = command.get('script_name')
+        args = command.get('args', [])
+        parameters = {}
+        
+        # Prepare args as list of strings
+        flattened_args = []
+        for arg in args:
+            if isinstance(arg, dict):
+                for key, value in arg.items():
+                    flattened_args.append(f"--{key}")
+                    flattened_args.append(str(value))
+            elif isinstance(arg, str):
+                flattened_args.append(arg)
+            else:
+                print(f"Unhandled argument type: {type(arg)}")
+                continue
+        
+        # Include any parameters directly specified in the command
+        if 'parameters' in command:
+            parameters.update(command['parameters'])
 
-    if not script_name:
-        return "Error: 'script_name' not specified."
-    
-    # Get the script manager instance
-    script_manager = get_script_manager()
-    
-    # Load custom scripts from configuration
-    print("Loading custom scripts from configuration...")
-    custom_scripts = get_custom_scripts()
-    print("Custom scripts loaded:", custom_scripts)
+        print("Script name:", script_name)
+        print("Arguments:", flattened_args)
+        print("Parameters:", parameters)
 
-    # Find the closest match for the requested script name
-    print("Finding closest match for script name:", script_name)
-    closest_matches = get_close_matches(script_name.lower(), custom_scripts.keys(), n=1, cutoff=0.5)
-    print("Closest matches found:", closest_matches)
+        if not script_name:
+            return "Error: 'script_name' not specified."
+        
+        # Get the script manager instance
+        script_manager = get_script_manager()
+        
+        # Load custom scripts from configuration
+        print("Loading custom scripts from configuration...")
+        custom_scripts = get_custom_scripts()
+        print("Custom scripts loaded:", custom_scripts)
 
-    if not closest_matches:
-        return f"Error: Script '{script_name}' not found."
-    
-    # Get the best match script path
-    best_match_script_name = closest_matches[0]
-    script_path = custom_scripts[best_match_script_name]
-    
-    # Run the script with the specified arguments and parameters
-    print("Running script:", script_path, "with arguments:", flattened_args, "and parameters:", parameters)
-    result = script_manager.perform_script(script_path, flattened_args, parameters)
-    print("Script result:", result)
-    
-    return result
+        # Find the closest match for the requested script name
+        print("Finding closest match for script name:", script_name)
+        closest_matches = get_close_matches(script_name.lower(), custom_scripts.keys(), n=1, cutoff=0.5)
+        print("Closest matches found:", closest_matches)
+
+        if not closest_matches:
+            return f"Error: Script '{script_name}' not found."
+        
+        # Get the best match script path
+        best_match_script_name = closest_matches[0]
+        script_path = custom_scripts[best_match_script_name]
+        
+        # Run the script with the specified arguments and parameters
+        print("Running script:", script_path, "with arguments:", flattened_args, "and parameters:", parameters)
+        result = script_manager.perform_script(script_path, flattened_args, parameters)
+        print("Script result:", result)
+        
+        return result
+
+    except Exception as e:
+        error_msg = f"Error executing script command: {str(e)}"
+        print(error_msg)
+        return error_msg
 
 @register_command("run")
 def handle_run_command(command: Dict[str, str]) -> str:

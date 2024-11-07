@@ -1,102 +1,100 @@
-from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-import time
+from selenium.common.exceptions import TimeoutException
 import argparse
-import sys
 
-def search_and_play_youtube(query, duration=10, headless=False):
-    """
-    Search and play a YouTube video.
-    
-    Args:
-        query (str): Search query for YouTube
-        duration (int): How long to play the video in seconds
-        headless (bool): Whether to run browser in headless mode
-    """
-    # Initialize Chrome options
-    chrome_options = webdriver.ChromeOptions()
-    if headless:
-        chrome_options.add_argument('--headless')
-        chrome_options.add_argument('--disable-gpu')
-    
-    # Add additional arguments to prevent common errors
-    chrome_options.add_argument('--no-sandbox')
-    chrome_options.add_argument('--disable-dev-shm-usage')
-    chrome_options.add_argument('--disable-notifications')
-    
+class YouTubeSearchScript:
+    def __init__(self):
+        self.base_url = "https://www.youtube.com"
+
+def create_instance():
+    return YouTubeSearchScript()
+
+def execute(self, args, parameters):
+    """Execute the YouTube search and open second result"""
     try:
-        # Initialize the WebDriver with options
-        driver = webdriver.Chrome(options=chrome_options)
-        driver.set_window_size(1920, 1080)  # Set a standard window size
+        # Parse arguments
+        parser = argparse.ArgumentParser()
+        parser.add_argument('--query', '--search_query', dest='query',
+                          type=str, required=True, help='Search term')
+        
+        # Handle the case where args might be a string instead of a list
+        if isinstance(args, str):
+            args = [args]
+        
+        # Convert args list to the right format if needed
+        formatted_args = []
+        i = 0
+        while i < len(args):
+            if args[i].startswith('--'):
+                formatted_args.append(args[i])
+                if i + 1 < len(args):
+                    formatted_args.append(args[i + 1])
+                i += 2
+            else:
+                formatted_args.append(args[i])
+                i += 1
+
+        try:
+            parsed_args = parser.parse_args(formatted_args)
+        except SystemExit:
+            # If parsing fails, try to extract the search query directly
+            search_term = None
+            for i, arg in enumerate(args):
+                if arg in ['--query', '--search_query'] and i + 1 < len(args):
+                    search_term = args[i + 1]
+                    break
+            if search_term is None:
+                return "Error: Search query not provided properly"
+        else:
+            search_term = parsed_args.query
+
+        driver = parameters.get('driver')
+        if not driver:
+            return "Error: WebDriver not provided"
         
         # Navigate to YouTube
-        print(f"Searching YouTube for: {query}")
-        driver.get("https://www.youtube.com")
+        driver.get(self.base_url)
         
-        # Wait for and find the search bar
+        # Wait for and find the search box
         search_box = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.NAME, "search_query"))
         )
         
-        # Perform the search
-        search_box.send_keys(query)
+        # Clear any existing text and enter search term
+        search_box.clear()
+        search_box.send_keys(search_term)
         search_box.send_keys(Keys.RETURN)
         
-        # Wait for and click the first video
-        print("Waiting for search results...")
-        first_video = WebDriverWait(driver, 10).until(
-            EC.presence_of_all_elements_located((By.ID, "video-title"))
-        )[0]  # Get the second video (index 1) as it's often more reliable
+        # Wait for search results to load with a longer timeout
+        video_results = WebDriverWait(driver, 20).until(
+            EC.presence_of_all_elements_located((By.CSS_SELECTOR, "ytd-video-renderer"))
+        )
         
-        print("Playing video...")
-        first_video.click()
+        if len(video_results) < 2:
+            return "Error: Not enough search results found"
+            
+        # Get the second video result and its link
+        second_video = video_results[1]
+        video_link = second_video.find_element(By.CSS_SELECTOR, "a#video-title")
+        video_title = video_link.get_attribute("title")
+        video_url = video_link.get_attribute("href")
         
-        # Let the video play for specified duration
-        print(f"Video will play for {duration} seconds")
-        time.sleep(int(duration))
+        # Navigate to the video
+        driver.get(video_url)
         
-        return "Video played successfully"
+        # Wait for the video player to load
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, "video.html5-main-video"))
+        )
         
+        return f"Successfully opened video: {video_title}"
+        
+    except TimeoutException:
+        return "Error: Timeout waiting for page elements to load"
     except Exception as e:
-        print(f"An error occurred: {e}", file=sys.stderr)
-        return f"Error: {str(e)}"
-    finally:
-        # Close the browser
-        driver.quit()
+        return f"Error during execution: {str(e)}"
 
-def main():
-    parser = argparse.ArgumentParser(description='Play YouTube videos from search query')
-    parser.add_argument('--query', type=str, help='Search query for YouTube video', required=True)
-    parser.add_argument('--duration', type=int, default=10, help='Duration to play video in seconds')
-    parser.add_argument('--headless', action='store_true', help='Run in headless mode')
-    
-    # Parse command line arguments or parameter string
-    if len(sys.argv) > 1:
-        args = parser.parse_args()
-    else:
-        # Handle parameters passed as key=value pairs
-        params = {}
-        for arg in sys.argv[1:]:
-            if '=' in arg:
-                key, value = arg.split('=', 1)
-                params[key.lstrip('-')] = value
-        
-        # Create a namespace object with the parameters
-        class Args:
-            pass
-        args = Args()
-        args.query = params.get('query', '')
-        args.duration = int(params.get('duration', 10))
-        args.headless = params.get('headless', 'false').lower() == 'true'
-    
-    if not args.query:
-        print("Error: Query parameter is required", file=sys.stderr)
-        return "Error: Query parameter is required"
-    
-    return search_and_play_youtube(args.query, args.duration, args.headless)
-
-if __name__ == "__main__":
-    main()
+YouTubeSearchScript.execute = execute

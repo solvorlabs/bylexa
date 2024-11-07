@@ -1,18 +1,67 @@
 import asyncio
 import websockets
 import json
+import io
+import sys
+import contextlib
+import traceback
 from .commands import perform_action
 from .config import load_email, load_token
-import sys
 import aioconsole
 
-WEBSOCKET_SERVER_URL = 'ws://localhost:3000/ws'
-# WEBSOCKET_SERVER_URL = 'wss://bylexa.onrender.com/ws'
+# WEBSOCKET_SERVER_URL = 'ws://localhost:3000/ws'
+WEBSOCKET_SERVER_URL = 'wss://bylexa.onrender.com/ws'
+
+class CodeExecutor:
+    def __init__(self):
+        self.globals = {}
+        self.locals = {}
+    
+    def execute_code(self, code):
+        """
+        Execute Python code in a controlled environment and return the output.
+        """
+        # Create string buffer to capture output
+        output_buffer = io.StringIO()
+        error_buffer = io.StringIO()
+        
+        try:
+            # Redirect stdout and stderr
+            with contextlib.redirect_stdout(output_buffer):
+                with contextlib.redirect_stderr(error_buffer):
+                    # Execute the code
+                    exec(code, self.globals, self.locals)
+            
+            # Get the output
+            output = output_buffer.getvalue()
+            errors = error_buffer.getvalue()
+            
+            return {
+                'success': True,
+                'output': output,
+                'errors': errors,
+                'exception': None
+            }
+            
+        except Exception as e:
+            return {
+                'success': False,
+                'output': output_buffer.getvalue(),
+                'errors': error_buffer.getvalue(),
+                'exception': {
+                    'type': type(e).__name__,
+                    'message': str(e),
+                    'traceback': traceback.format_exc()
+                }
+            }
+        finally:
+            output_buffer.close()
+            error_buffer.close()
 
 async def listen(token, room_code=None):
-    """Listen for commands and join a room if a room_code is provided."""
     headers = {'Authorization': f'Bearer {token}'}
     email = load_email()
+    code_executor = CodeExecutor()
     
     while True:
         try:
@@ -21,21 +70,17 @@ async def listen(token, room_code=None):
                 print(f"Connected to {WEBSOCKET_SERVER_URL} as {email}")
                 
                 if room_code:
-                    # Send a message to join the room
                     await websocket.send(json.dumps({'action': 'join_room', 'room_code': room_code}))
                     print(f"Joined room: {room_code}")
 
-                # Start message input handler
                 input_task = asyncio.create_task(handle_user_input(websocket, room_code))
-                receive_task = asyncio.create_task(handle_server_messages(websocket))
+                receive_task = asyncio.create_task(handle_server_messages(websocket, code_executor))
 
-                # Wait for either task to complete (or raise an exception)
                 done, pending = await asyncio.wait(
                     [input_task, receive_task],
                     return_when=asyncio.FIRST_COMPLETED
                 )
 
-                # Cancel the remaining task
                 for task in pending:
                     task.cancel()
                     try:
@@ -43,7 +88,6 @@ async def listen(token, room_code=None):
                     except asyncio.CancelledError:
                         pass
 
-                # Re-raise any exceptions
                 for task in done:
                     try:
                         await task
@@ -58,23 +102,89 @@ async def listen(token, room_code=None):
             print(f"An error occurred: {e}. Retrying in 5 seconds...")
             await asyncio.sleep(5)
 
+async def handle_server_messages(websocket, code_executor):
+    while True:
+        try:
+            message = await websocket.recv()
+            command = json.loads(message)
+            print(f"\nReceived: {command}")
+            
+            if command.get('action') == 'python_execute':
+                # Execute the code and get the result
+                result = code_executor.execute_code(command['code'])
+                
+                # Send response back
+                response = {
+                    'action': 'python_output',
+                    'result': result,
+                    'original_sender': command.get('sender'),
+                    'code': command['code']
+                }
+                
+                await websocket.send(json.dumps(response))
+                print(f"Sent execution result: {result}")
+                
+            elif command.get('action') == 'python_result':
+                # Handle received Python execution results
+                result = command['result']
+                
+                # Print execution details in a formatted way
+                print("\n=== Python Execution Result ===")
+                print(f"Status: {'Success' if result['success'] else 'Failed'}")
+                if result['output']:
+                    print("\nOutput:")
+                    print(result['output'].rstrip())
+                if result['errors']:
+                    print("\nErrors:")
+                    print(result['errors'])
+                if result['exception']:
+                    print("\nException:")
+                    print(result['exception'])
+                print(f"\nExecuted by: {command['executor']}")
+                print("============================\n")
+                
+            elif 'command' in command:
+                result = perform_action(command['command'])
+                await websocket.send(json.dumps({'result': result}))
+                print(f"Sent result: {result}")
+                
+            elif 'message' in command:
+                print(f"Message from server: {command['message']}")
+                
+            else:
+                print(f"Unhandled message type: {command.get('action', 'unknown')}")
+                print(f"Message content: {command}")
+                
+        except asyncio.CancelledError:
+            raise
+        except Exception as e:
+            print(f"Error handling server message: {e}")
+            raise
+
 async def handle_user_input(websocket, room_code):
-    """Handle user input for sending messages."""
     while True:
         try:
             print("\nPress Enter to send a message (or Ctrl+C to quit)")
-            await aioconsole.ainput()  # Wait for Enter key
+            await aioconsole.ainput()
             
-            action_type = await aioconsole.ainput("Enter action type (e.g., 'broadcast', 'show_notification'): ")
-            message = await aioconsole.ainput("Enter the message you want to send: ")
-
-            if action_type.lower() == 'broadcast' and room_code:
+            action_type = await aioconsole.ainput("Enter action type (e.g., 'broadcast', 'show_notification', 'python_execute'): ")
+            
+            if action_type.lower() == 'python_execute':
+                code = await aioconsole.ainput("Enter the Python code to execute: ")
+                action_data = {
+                    "action": "python_execute",
+                    "code": code,
+                    "room_code": room_code
+                }
+            elif action_type.lower() == 'broadcast' and room_code:
+                message = await aioconsole.ainput("Enter the message you want to send: ")
                 action_data = {
                     "action": "broadcast",
                     "room_code": room_code,
                     "command": message
                 }
             else:
+                message = await aioconsole.ainput("Enter the message you want to send: ")
                 action_data = {
                     "action": action_type,
                     "message": message
@@ -87,29 +197,6 @@ async def handle_user_input(websocket, room_code):
             raise
         except Exception as e:
             print(f"Error sending message: {e}")
-
-async def handle_server_messages(websocket):
-    """Handle incoming messages from the server."""
-    while True:
-        try:
-            message = await websocket.recv()
-            command = json.loads(message)
-            print(f"\nReceived: {command}")
-
-            if 'command' in command:
-                result = perform_action(command['command'])
-                await websocket.send(json.dumps({'result': result}))
-                print(f"Sent result: {result}")
-            elif 'message' in command:
-                print(f"Message from server: {command['message']}")
-            else:
-                print(f"Unhandled message: {command}")
-                
-        except asyncio.CancelledError:
-            raise
-        except Exception as e:
-            print(f"Error handling server message: {e}")
-            raise
 
 async def main():
     token = load_token() 
