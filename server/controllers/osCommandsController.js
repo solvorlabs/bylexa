@@ -5,7 +5,7 @@ const config = require('../config');
 const genAI = new GoogleGenerativeAI(process.env.API_KEY_12607);
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 const jwt = require('jsonwebtoken');
-
+// const {interpretCommand} = require('../services/ollamaService')
 
 //Todo : single command based output to reduce redundancy and optimize the workflow
 const interpretCommand = async (command) => {
