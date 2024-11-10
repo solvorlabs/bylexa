@@ -77,7 +77,7 @@ def execute(self, args, parameters):
             return "Error: Not enough search results found"
             
         # Get the second video result and its link
-        second_video = video_results[1]
+        second_video = video_results[0]
         video_link = second_video.find_element(By.CSS_SELECTOR, "a#video-title")
         video_title = video_link.get_attribute("title")
         video_url = video_link.get_attribute("href")
