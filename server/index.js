@@ -23,6 +23,8 @@ const translationRoutes = require('./src/course-crafty/routes/translationRoutes'
 const osCommandRoutes = require('./routes/osCommandRoutes');
 const utilRoutes = require('./routes/utilRoutes');
 const authRoutes = require('./routes/authRoutes');
+const scriptRoutes = require('./routes/scriptRoutes');
+const pluginRoutes = require('./routes/pluginRoutes');
 
 // Main route
 app.get('/', (req, res) => {
@@ -37,6 +39,8 @@ app.use('/api/translations', translationRoutes);
 app.use('/api/os-commands', osCommandRoutes);
 app.use('/api/util', utilRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/scripts', scriptRoutes);
+app.use('/api/plugins', pluginRoutes);
 
 // Start the server and listen on all network interfaces (0.0.0.0)
 const PORT = process.env.PORT || 3000;

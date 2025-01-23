@@ -18,3 +18,4 @@ bylexa.egg-info/dependency_links.txt
 bylexa.egg-info/entry_points.txt
 bylexa.egg-info/requires.txt
 bylexa.egg-info/top_level.txt
+bylexa/plugins/__init__.py

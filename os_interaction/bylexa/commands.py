@@ -15,7 +15,7 @@ import json
 import os
 from difflib import get_close_matches
 from .script_manager import init_script_manager, get_script_manager
-
+from .plugins import plugin_manager
 # Registry for command handlers
 COMMAND_HANDLERS: Dict[str, Callable] = {}
 
@@ -29,6 +29,18 @@ def register_command(action: str):
 def perform_action(command: Dict[str, str]) -> str:
     """Perform the action specified in the command dictionary."""
     action = command.get('action', '').lower()
+    
+    # First check if any plugin can handle this action
+    for plugin_id, plugin in plugin_manager.plugins.items():
+        if plugin['enabled'] and hasattr(plugin['module'], 'handle_action'):
+            try:
+                result = plugin['module'].handle_action(action, command)
+                if result is not None:
+                    return result
+            except Exception as e:
+                print(f"Error in plugin {plugin_id}: {e}")
+    
+    # If no plugin handled it, use built-in handlers
     handler = COMMAND_HANDLERS.get(action)
     if handler:
         return handler(command)

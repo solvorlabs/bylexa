@@ -1,10 +1,14 @@
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox, simpledialog
+from tkinter import ttk, filedialog, messagebox, simpledialog, scrolledtext
 import json
 import os
 from pathlib import Path
 from typing import Dict, Any, List
 from . import config
+from .plugins import plugin_manager
+import requests
+from urllib.parse import urljoin
+import webbrowser
 
 class ConfigGUI:
     def __init__(self):
@@ -27,6 +31,9 @@ class ConfigGUI:
         # Add save button at bottom
         self.save_button = tk.Button(self.root, text="Save Configuration", command=self.save_config)
         self.save_button.pack(pady=10)
+        self.init_plugins_tab()  # Add this line
+        self.script_registry_url = "https://bylexa.onrender.com/api/scripts/registry"
+        self.init_script_browser_tab()
 
     def init_apps_tab(self):
         """Initialize the Applications tab"""
@@ -277,6 +284,325 @@ class ConfigGUI:
         except Exception as e:
             messagebox.showerror("Error", f"Failed to save configuration: {str(e)}")
 
+    def init_plugins_tab(self):
+        """Initialize the Plugins tab"""
+        self.plugins_tab = ttk.Frame(self.notebook)
+        self.notebook.add(self.plugins_tab, text='Plugins')
+
+        # Create frames
+        self.installed_frame = ttk.LabelFrame(self.plugins_tab, text="Installed Plugins")
+        self.installed_frame.pack(fill='both', expand=True, padx=5, pady=5)
+
+        self.available_frame = ttk.LabelFrame(self.plugins_tab, text="Available Plugins")
+        self.available_frame.pack(fill='both', expand=True, padx=5, pady=5)
+
+        # Create treeviews
+        columns = ('Name', 'Version', 'Status', 'Description')
+        
+        self.installed_tree = ttk.Treeview(self.installed_frame, columns=columns, show='headings')
+        self.available_tree = ttk.Treeview(self.available_frame, columns=columns, show='headings')
+
+        for tree in (self.installed_tree, self.available_tree):
+            for col in columns:
+                tree.heading(col, text=col)
+                tree.column(col, width=100)
+
+        # Add scrollbars
+        for tree, frame in [(self.installed_tree, self.installed_frame),
+                           (self.available_tree, self.available_frame)]:
+            scrollbar = ttk.Scrollbar(frame, orient="vertical", command=tree.yview)
+            tree.configure(yscrollcommand=scrollbar.set)
+            tree.pack(side='left', fill='both', expand=True)
+            scrollbar.pack(side='right', fill='y')
+
+        # Add buttons
+        button_frame = ttk.Frame(self.plugins_tab)
+        button_frame.pack(fill='x', padx=5, pady=5)
+
+        ttk.Button(button_frame, text="Refresh", command=self.refresh_plugins).pack(side='left', padx=5)
+        ttk.Button(button_frame, text="Install", command=self.install_plugin).pack(side='left', padx=5)
+        ttk.Button(button_frame, text="Uninstall", command=self.uninstall_plugin).pack(side='left', padx=5)
+        ttk.Button(button_frame, text="Enable", command=self.enable_plugin).pack(side='left', padx=5)
+        ttk.Button(button_frame, text="Disable", command=self.disable_plugin).pack(side='left', padx=5)
+
+        # Load plugins
+        self.refresh_plugins()
+
+    def refresh_plugins(self):
+        """Refresh both installed and available plugins"""
+        # Clear existing items
+        for tree in (self.installed_tree, self.available_tree):
+            for item in tree.get_children():
+                tree.delete(item)
+
+        # Load installed plugins
+        for plugin_id, plugin in plugin_manager.plugins.items():
+            metadata = plugin['metadata']
+            status = "Enabled" if plugin['enabled'] else "Disabled"
+            self.installed_tree.insert('', 'end', values=(
+                metadata['name'],
+                metadata.get('version', 'N/A'),
+                status,
+                metadata.get('description', 'N/A')
+            ))
+
+        # Load available plugins
+        for plugin in plugin_manager.get_available_plugins():
+            if plugin['id'] not in plugin_manager.plugins:
+                self.available_tree.insert('', 'end', values=(
+                    plugin['name'],
+                    plugin.get('version', 'N/A'),
+                    'Not Installed',
+                    plugin.get('description', 'N/A')
+                ))
+
+    def install_plugin(self):
+        """Install selected plugin"""
+        selection = self.available_tree.selection()
+        if not selection:
+            messagebox.showwarning("Warning", "Please select a plugin to install")
+            return
+
+        item = self.available_tree.item(selection[0])
+        plugin_name = item['values'][0]
+        
+        if plugin_manager.install_plugin(plugin_name):
+            messagebox.showinfo("Success", f"Plugin {plugin_name} installed successfully")
+            self.refresh_plugins()
+        else:
+            messagebox.showerror("Error", f"Failed to install plugin {plugin_name}")
+
+    def uninstall_plugin(self):
+        """Uninstall selected plugin"""
+        selection = self.installed_tree.selection()
+        if not selection:
+            messagebox.showwarning("Warning", "Please select a plugin to uninstall")
+            return
+
+        item = self.installed_tree.item(selection[0])
+        plugin_name = item['values'][0]
+        
+        if messagebox.askyesno("Confirm", f"Uninstall plugin {plugin_name}?"):
+            if plugin_manager.uninstall_plugin(plugin_name):
+                messagebox.showinfo("Success", f"Plugin {plugin_name} uninstalled successfully")
+                self.refresh_plugins()
+            else:
+                messagebox.showerror("Error", f"Failed to uninstall plugin {plugin_name}")
+
+    def enable_plugin(self):
+        """Enable selected plugin"""
+        selection = self.installed_tree.selection()
+        if not selection:
+            messagebox.showwarning("Warning", "Please select a plugin to enable")
+            return
+
+        item = self.installed_tree.item(selection[0])
+        plugin_name = item['values'][0]
+        
+        if plugin_manager.enable_plugin(plugin_name):
+            messagebox.showinfo("Success", f"Plugin {plugin_name} enabled successfully")
+            self.refresh_plugins()
+        else:
+            messagebox.showerror("Error", f"Failed to enable plugin {plugin_name}")
+
+    def disable_plugin(self):
+        """Disable selected plugin"""
+        selection = self.installed_tree.selection()
+        if not selection:
+            messagebox.showwarning("Warning", "Please select a plugin to disable")
+            return
+
+        item = self.installed_tree.item(selection[0])
+        plugin_name = item['values'][0]
+        
+        if plugin_manager.disable_plugin(plugin_name):
+            messagebox.showinfo("Success", f"Plugin {plugin_name} disabled successfully")
+            self.refresh_plugins()
+        else:
+            messagebox.showerror("Error", f"Failed to disable plugin {plugin_name}")
+    
+    
+    def init_script_browser_tab(self):
+        """Initialize the Script Browser tab"""
+        self.script_browser_tab = ttk.Frame(self.notebook)
+        self.notebook.add(self.script_browser_tab, text='Script Browser')
+
+        # Search frame
+        search_frame = ttk.Frame(self.script_browser_tab)
+        search_frame.pack(fill='x', padx=5, pady=5)
+
+        ttk.Label(search_frame, text="Search:").pack(side='left', padx=5)
+        self.search_entry = ttk.Entry(search_frame)
+        self.search_entry.pack(side='left', fill='x', expand=True, padx=5)
+        ttk.Button(search_frame, text="Search", command=self.search_scripts).pack(side='left', padx=5)
+
+        # Split view for scripts
+        paned = ttk.PanedWindow(self.script_browser_tab, orient='horizontal')
+        paned.pack(fill='both', expand=True, padx=5, pady=5)
+
+        # Scripts list frame
+        list_frame = ttk.LabelFrame(paned, text="Available Scripts")
+        paned.add(list_frame)
+
+        # Create treeview for scripts
+        columns = ('Name', 'Author', 'Rating', 'Downloads')
+        self.scripts_tree = ttk.Treeview(list_frame, columns=columns, show='headings')
+        for col in columns:
+            self.scripts_tree.heading(col, text=col)
+            self.scripts_tree.column(col, width=100)
+
+        scrollbar = ttk.Scrollbar(list_frame, orient="vertical", command=self.scripts_tree.yview)
+        self.scripts_tree.configure(yscrollcommand=scrollbar.set)
+        self.scripts_tree.pack(side='left', fill='both', expand=True)
+        scrollbar.pack(side='right', fill='y')
+
+        # Script details frame
+        details_frame = ttk.LabelFrame(paned, text="Script Details")
+        paned.add(details_frame)
+
+        # Details content
+        self.script_details = scrolledtext.ScrolledText(details_frame, wrap=tk.WORD, width=40, height=20)
+        self.script_details.pack(fill='both', expand=True, padx=5, pady=5)
+
+        # Buttons frame
+        button_frame = ttk.Frame(details_frame)
+        button_frame.pack(fill='x', padx=5, pady=5)
+
+        ttk.Button(button_frame, text="Install", command=self.install_selected_script).pack(side='left', padx=5)
+        ttk.Button(button_frame, text="View Source", command=self.view_script_source).pack(side='left', padx=5)
+        ttk.Button(button_frame, text="View Documentation", command=self.view_script_docs).pack(side='left', padx=5)
+
+        # Bind selection event
+        self.scripts_tree.bind('<<TreeviewSelect>>', self.on_script_select)
+
+        # Load initial scripts
+        self.refresh_available_scripts()
+
+    def search_scripts(self):
+        """Search for scripts based on the search term"""
+        search_term = self.search_entry.get().strip()
+        self.refresh_available_scripts(search_term)
+
+    def refresh_available_scripts(self, search_term: str = ""):
+        """Refresh the list of available scripts"""
+        try:
+            params = {'q': search_term} if search_term else {}
+            response = requests.get(self.script_registry_url, params=params)
+            scripts = response.json()['scripts']
+
+            # Clear existing items
+            for item in self.scripts_tree.get_children():
+                self.scripts_tree.delete(item)
+
+            # Add scripts to treeview
+            for script in scripts:
+                self.scripts_tree.insert('', 'end', values=(
+                    script['name'],
+                    script['author'],
+                    script['rating'],
+                    script['downloads']
+                ), tags=(script['id'],))
+
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to fetch scripts: {str(e)}")
+
+    def on_script_select(self, event):
+        """Handle script selection"""
+        selection = self.scripts_tree.selection()
+        if not selection:
+            return
+
+        try:
+            script_id = self.scripts_tree.item(selection[0], 'tags')[0]
+            response = requests.get(f"{self.script_registry_url}/{script_id}")
+            script_details = response.json()
+
+            # Update details view
+            self.script_details.delete('1.0', tk.END)
+            details_text = f"""Name: {script_details['name']}
+Author: {script_details['author']}
+Version: {script_details['version']}
+Rating: {script_details['rating']} ({script_details['num_ratings']} ratings)
+Downloads: {script_details['downloads']}
+
+Description:
+{script_details['description']}
+
+Requirements:
+{script_details['requirements']}
+
+Keywords: {', '.join(script_details['keywords'])}
+"""
+            self.script_details.insert('1.0', details_text)
+
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to fetch script details: {str(e)}")
+
+    def install_selected_script(self):
+        """Install the selected script"""
+        selection = self.scripts_tree.selection()
+        if not selection:
+            messagebox.showwarning("Warning", "Please select a script to install")
+            return
+
+        try:
+            script_id = self.scripts_tree.item(selection[0], 'tags')[0]
+            
+            # Download and install script
+            response = requests.get(f"{self.script_registry_url}/{script_id}/download")
+            if response.status_code == 200:
+                script_data = response.json()
+                
+                # Save script file
+                scripts_dir = Path(config.load_app_configs().get('scripts_directory', 'scripts'))
+                if not scripts_dir.is_absolute():
+                    scripts_dir = Path.home() / '.bylexa' / scripts_dir
+                
+                scripts_dir.mkdir(parents=True, exist_ok=True)
+                script_path = scripts_dir / f"{script_data['name']}.py"
+                
+                with open(script_path, 'w') as f:
+                    f.write(script_data['source'])
+
+                # Add to custom scripts
+                config.add_custom_script(script_data['name'], str(script_path))
+                
+                messagebox.showinfo("Success", f"Script '{script_data['name']}' installed successfully")
+                self.load_scripts()  # Refresh scripts list
+            else:
+                messagebox.showerror("Error", "Failed to download script")
+
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to install script: {str(e)}")
+
+    def view_script_source(self):
+        """View the source code of the selected script"""
+        selection = self.scripts_tree.selection()
+        if not selection:
+            messagebox.showwarning("Warning", "Please select a script to view")
+            return
+
+        try:
+            script_id = self.scripts_tree.item(selection[0], 'tags')[0]
+            url = urljoin(self.script_registry_url, f"/{script_id}/source")
+            webbrowser.open(url)
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to open source view: {str(e)}")
+
+    def view_script_docs(self):
+        """View the documentation of the selected script"""
+        selection = self.scripts_tree.selection()
+        if not selection:
+            messagebox.showwarning("Warning", "Please select a script to view docs")
+            return
+
+        try:
+            script_id = self.scripts_tree.item(selection[0], 'tags')[0]
+            url = urljoin(self.script_registry_url, f"/{script_id}/docs")
+            webbrowser.open(url)
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to open documentation: {str(e)}")
+    
     def run(self):
         """Start the GUI application"""
         self.root.mainloop()

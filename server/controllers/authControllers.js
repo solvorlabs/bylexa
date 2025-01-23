@@ -61,17 +61,18 @@ exports.login = async (req, res) => {
 };
 
 // Middleware to protect routes with JWT
-exports.authMiddleware = (req, res, next) => {
-  const token = req.headers.authorization && req.headers.authorization.split(' ')[1]; // Expect "Bearer <token>"
-  if (!token) return res.status(401).json({ message: 'No token provided' });
-
+exports.authMiddleware = async (req, res, next) => {
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    req.user = decoded;  // Attach decoded token payload (user info) to req.user
-    req.user.token = token; // Attach the actual token to req.user as well
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ error: 'No token provided' });
+    }
+
+    const decoded = jwt.verify(token, process.env.API_KEY_JWT);
+    req.user = decoded; // This should include _id and email
     next();
   } catch (error) {
-    res.status(401).json({ message: 'Invalid token' });
+    res.status(401).json({ error: 'Invalid token' });
   }
 };
 
