@@ -9,8 +9,8 @@ from .commands import perform_action
 from .config import load_email, load_token
 import aioconsole
 
-# WEBSOCKET_SERVER_URL = 'ws://localhost:3000/ws'
-WEBSOCKET_SERVER_URL = 'wss://bylexa.onrender.com/ws'
+WEBSOCKET_SERVER_URL = 'ws://localhost:3000/ws'
+# WEBSOCKET_SERVER_URL = 'wss://bylexa.onrender.com/ws'
 
 class CodeExecutor:
     def __init__(self):

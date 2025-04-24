@@ -13,7 +13,8 @@ def login():
     }
 
     try:
-        response = requests.post("https://bylexa.onrender.com/api/auth/login", json=payload)
+        response = requests.post("http://localhost:3000/api/auth/login", json=payload)
+        # response = requests.post("https://bylexa.onrender.com/api/auth/login", json=payload)
 
         if response.status_code == 200:
             token = response.json().get("token")

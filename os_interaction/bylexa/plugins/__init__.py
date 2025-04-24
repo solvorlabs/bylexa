@@ -12,7 +12,8 @@ class PluginManager:
         self.plugins: Dict[str, Any] = {}
         self.plugin_dir = Path.home() / '.bylexa' / 'plugins'
         self.plugin_dir.mkdir(parents=True, exist_ok=True)
-        self.plugin_registry_url = "https://bylexa.onrender.com/api/plugins/registry"
+        self.plugin_registry_url = "http://localhost:3000/api/plugins/registry"
+        # self.plugin_registry_url = "https://bylexa.onrender.com/api/plugins/registry"
         self.load_plugins()
 
     def load_plugins(self) -> None:

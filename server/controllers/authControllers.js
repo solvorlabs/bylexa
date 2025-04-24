@@ -69,7 +69,11 @@ exports.authMiddleware = async (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, process.env.API_KEY_JWT);
-    req.user = decoded; // This should include _id and email
+    req.user = {
+      ...decoded,
+      token: token // Add the original token to the user object
+    };
+    console.log(req.user);
     next();
   } catch (error) {
     res.status(401).json({ error: 'Invalid token' });

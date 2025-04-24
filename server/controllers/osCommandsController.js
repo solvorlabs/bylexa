@@ -164,6 +164,7 @@ exports.handleOSCommand = async (req, res) => {
 exports.handleModuleOsCommand = async (req, res) => {
   const { command } = req.body;
   const userToken = req.user.token;
+  console.log(userToken)
   const decoded = jwt.verify(userToken, config.API_KEY_JWT);
   req.user = decoded;
 

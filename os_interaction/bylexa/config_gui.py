@@ -32,7 +32,8 @@ class ConfigGUI:
         self.save_button = tk.Button(self.root, text="Save Configuration", command=self.save_config)
         self.save_button.pack(pady=10)
         self.init_plugins_tab()  # Add this line
-        self.script_registry_url = "https://bylexa.onrender.com/api/scripts/registry"
+        self.script_registry_url = "http://localhost:3000/api/scripts/registry"
+        # self.script_registry_url = "https://bylexa.onrender.com/api/scripts/registry"
         self.init_script_browser_tab()
 
     def init_apps_tab(self):
@@ -348,9 +349,12 @@ class ConfigGUI:
 
         # Load available plugins
         for plugin in plugin_manager.get_available_plugins():
-            if plugin['id'] not in plugin_manager.plugins:
+            # Check using plugin name instead of id
+            plugin_name = plugin.get('name')
+            if plugin_name and not any(p['metadata']['name'] == plugin_name 
+                                     for p in plugin_manager.plugins.values()):
                 self.available_tree.insert('', 'end', values=(
-                    plugin['name'],
+                    plugin_name,
                     plugin.get('version', 'N/A'),
                     'Not Installed',
                     plugin.get('description', 'N/A')
