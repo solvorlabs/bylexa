@@ -27,6 +27,11 @@ import { Search, Download, Extension, Settings, Add, Delete, Edit } from '@mui/i
 import axios from 'axios';
 import Config from '../config/Config';
 
+const logAction = (action, details) => {
+  console.log(`[PluginManager] ${action}:`, details);
+  // You could also send this to your backend or logging service
+};
+
 const PluginManager = () => {
   const [plugins, setPlugins] = useState([]);
   const [userPlugins, setUserPlugins] = useState([]);
@@ -39,6 +44,7 @@ const PluginManager = () => {
   const [editPlugin, setEditPlugin] = useState(null);
 
   useEffect(() => {
+    logAction('Tab Changed', { newTab: tab });
     if (tab === 'browse') {
       fetchPlugins();
     } else {
@@ -48,38 +54,66 @@ const PluginManager = () => {
 
   const fetchPlugins = async (search = '') => {
     setLoading(true);
+    logAction('Fetching Plugins', { searchTerm: search });
     try {
-      const response = await axios.get(`${Config.backendUrl}/api/plugins/registry${search ? `?q=${search}` : ''}`);
+      const response = await axios.get(
+        `${Config.backendUrl}/api/plugins/registry${search ? `?q=${search}` : ''}`,
+        { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
+      );
+      logAction('Plugins Fetched', { count: response.data.plugins.length });
+      console.log('Fetched plugins:', response.data.plugins);
       setPlugins(response.data.plugins);
     } catch (error) {
+      logAction('Error Fetching Plugins', { error: error.message });
       console.error('Error fetching plugins:', error);
     }
     setLoading(false);
   };
 
   const fetchUserPlugins = async () => {
+    logAction('Fetching User Plugins', {});
     try {
       const response = await axios.get(`${Config.backendUrl}/api/plugins/user`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
       });
+      logAction('User Plugins Fetched', { count: response.data.plugins.length });
       setUserPlugins(response.data.plugins);
     } catch (error) {
+      logAction('Error Fetching User Plugins', { error: error.message });
       console.error('Error fetching user plugins:', error);
     }
   };
 
   const handleCreatePlugin = async (formData) => {
+    logAction('Creating Plugin', { name: formData.name });
     try {
-      const form = new FormData();
-      Object.keys(formData).forEach(key => {
-        if (key === 'requirements' || key === 'keywords') {
-          form.append(key, JSON.stringify(formData[key]));
-        } else {
-          form.append(key, formData[key]);
-        }
-      });
+      // Validate required fields
+      if (!formData.name || !formData.version || !formData.description || 
+          !formData.plugin_file || !formData.main_file) {
+        throw new Error('Please fill in all required fields');
+      }
 
-      await axios.post(
+      const form = new FormData();
+      
+      // Handle basic fields
+      form.append('name', formData.name);
+      form.append('version', formData.version);
+      form.append('description', formData.description);
+      form.append('plugin_file', formData.plugin_file);
+      form.append('main_file', formData.main_file);  // Add main file
+
+      // Handle arrays and objects
+      if (Array.isArray(formData.requirements)) {
+        form.append('requirements', JSON.stringify(formData.requirements.filter(Boolean)));
+      }
+      if (Array.isArray(formData.keywords)) {
+        form.append('keywords', JSON.stringify(formData.keywords.filter(Boolean)));
+      }
+      if (formData.config) {
+        form.append('config', JSON.stringify(formData.config));
+      }
+
+      const response = await axios.post(
         `${Config.backendUrl}/api/plugins/registry`,
         form,
         { 
@@ -89,22 +123,37 @@ const PluginManager = () => {
           } 
         }
       );
+
+      logAction('Plugin Created', { 
+        name: formData.name, 
+        id: response.data._id 
+      });
+      
       setCreateDialogOpen(false);
       fetchUserPlugins();
     } catch (error) {
+      logAction('Error Creating Plugin', { 
+        error: error.message, 
+        name: formData.name 
+      });
       console.error('Error creating plugin:', error);
+      // Re-throw error to be handled by the form
+      throw error;
     }
   };
 
   const handleDeletePlugin = async (pluginId) => {
+    logAction('Deleting Plugin', { pluginId });
     if (window.confirm('Are you sure you want to delete this plugin?')) {
       try {
         await axios.delete(
           `${Config.backendUrl}/api/plugins/registry/${pluginId}`,
           { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
         );
+        logAction('Plugin Deleted', { pluginId });
         fetchUserPlugins();
       } catch (error) {
+        logAction('Error Deleting Plugin', { error: error.message, pluginId });
         console.error('Error deleting plugin:', error);
       }
     }
@@ -126,28 +175,43 @@ const PluginManager = () => {
   };
 
   const handleInstall = async (pluginId) => {
+    logAction('Installing Plugin', { pluginId });
     try {
-      const response = await axios.get(`${Config.backendUrl}/api/plugins/registry/${pluginId}/download`);
-      console.log('Plugin installed:', response.data);
-      // Add logic to handle successful installation
+      await axios.get(
+        `${Config.backendUrl}/api/plugins/registry/${pluginId}/download`,
+        { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
+      );
+      logAction('Plugin Installed', { pluginId });
       fetchPlugins();
     } catch (error) {
+      logAction('Error Installing Plugin', { error: error.message, pluginId });
       console.error('Error installing plugin:', error);
     }
   };
 
   const handleTogglePlugin = async (pluginId, enabled) => {
+    logAction('Toggling Plugin', { pluginId, enabled });
     try {
       const endpoint = enabled ? 'enable' : 'disable';
-      await axios.post(`${Config.backendUrl}/api/plugins/registry/${pluginId}/${endpoint}`);
-      fetchPlugins();
+      await axios.post(
+        `${Config.backendUrl}/api/plugins/registry/${pluginId}/${endpoint}`,
+        {},
+        { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
+      );
+      logAction('Plugin Toggled', { pluginId, enabled });
+      if (tab === 'browse') {
+        fetchPlugins();
+      } else {
+        fetchUserPlugins();
+      }
     } catch (error) {
+      logAction('Error Toggling Plugin', { error: error.message, pluginId, enabled });
       console.error('Error toggling plugin:', error);
     }
   };
 
   return (
-    <div maxWidth="lg" sx={{ py: 4 }} className='bg-black'>
+    <div sx={{ py: 4 }} className='bg-black pt-20 px-10 h-screen'>
         <br />
       <Typography variant="h4" gutterBottom className='text-white'>
         Plugin Manager
@@ -283,7 +347,7 @@ const PluginCard = ({ plugin, onSelect, onInstall, onToggle }) => (
         <Typography variant="h6">
           {plugin.name}
         </Typography>
-        <FormControlLabel
+        {/* <FormControlLabel
           control={
             <Switch
               checked={plugin.enabled}
@@ -291,7 +355,7 @@ const PluginCard = ({ plugin, onSelect, onInstall, onToggle }) => (
             />
           }
           label={plugin.enabled ? "Enabled" : "Disabled"}
-        />
+        /> */}
       </Box>
       <Typography variant="body2" color="text.secondary" gutterBottom>
         {plugin.description}
@@ -314,15 +378,16 @@ const PluginCard = ({ plugin, onSelect, onInstall, onToggle }) => (
         >
           Details
         </Button>
-        {!plugin.enabled && (
-          <Button
-            startIcon={<Download />}
-            variant="contained"
-            onClick={() => onInstall(plugin._id)}
-          >
-            Install
-          </Button>
-        )}
+        <Button
+          startIcon={plugin.enabled ? <Extension /> : <Download />}
+          variant="contained"
+          onClick={() => plugin.enabled ? 
+            onToggle(plugin._id, false) : 
+            onInstall(plugin._id)
+          }
+        >
+          {plugin.enabled ? 'Disable' : 'Install'}
+        </Button>
       </Box>
     </CardContent>
   </Card>
@@ -334,16 +399,27 @@ const PluginForm = ({ initialData, onSubmit, onCancel }) => {
     description: '',
     version: '1.0.0',
     plugin_file: null,
+    main_file: 'main.py',  // Add default main file path
     requirements: [],
     keywords: [],
     config: {}
   });
+  const [error, setError] = useState(null);
 
   const handleFileChange = (event) => {
     setFormData({
       ...formData,
       plugin_file: event.target.files[0]
     });
+  };
+
+  const handleSubmit = async () => {
+    try {
+      setError(null);
+      await onSubmit(formData);
+    } catch (err) {
+      setError(err.message);
+    }
   };
 
   return (
@@ -391,6 +467,14 @@ const PluginForm = ({ initialData, onSubmit, onCancel }) => {
       )}
       <TextField
         fullWidth
+        label="Main File Path"
+        value={formData.main_file}
+        onChange={(e) => setFormData({ ...formData, main_file: e.target.value })}
+        margin="normal"
+        helperText="Path to the main plugin file (e.g., main.py)"
+      />
+      <TextField
+        fullWidth
         label="Requirements (comma-separated)"
         value={formData.requirements.join(', ')}
         onChange={(e) => setFormData({ 
@@ -409,11 +493,16 @@ const PluginForm = ({ initialData, onSubmit, onCancel }) => {
         })}
         margin="normal"
       />
+      {error && (
+        <Typography color="error" sx={{ mt: 2 }}>
+          {error}
+        </Typography>
+      )}
       <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
         <Button onClick={onCancel}>Cancel</Button>
         <Button 
           variant="contained" 
-          onClick={() => onSubmit(formData)}
+          onClick={handleSubmit}
         >
           {initialData ? 'Update' : 'Create'}
         </Button>
@@ -441,7 +530,7 @@ const PluginDetailsDialog = ({ plugin, onClose, onInstall }) => (
       <Typography variant="subtitle1" gutterBottom>
         Requirements:
       </Typography>
-      <Box component="pre" sx={{ bgcolor: 'grey.100', p: 2, borderRadius: 1 }}>
+      <Box component="pre" sx={{ bgcolor: 'grey.700', p: 2, borderRadius: 1 }}>
         {plugin.requirements.join('\n')}
       </Box>
     </DialogContent>
@@ -460,4 +549,4 @@ const PluginDetailsDialog = ({ plugin, onClose, onInstall }) => (
   </>
 );
 
-export default PluginManager; 
+export default PluginManager;

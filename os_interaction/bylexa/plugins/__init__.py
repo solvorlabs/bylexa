@@ -46,37 +46,52 @@ class PluginManager:
         """Fetch available plugins from registry"""
         try:
             response = requests.get(self.plugin_registry_url)
-            return response.json()['plugins']
+            data = response.json()
+            return data.get('plugins', [])  # Return plugins list directly
         except Exception as e:
-            print(f"Error fetching plugins: {e}")
             return []
 
     def install_plugin(self, plugin_id: str) -> bool:
         """Install a plugin from the registry"""
         try:
+            print(f"Starting installation for plugin: {plugin_id}")
+
             # Download plugin
-            response = requests.get(f"{self.plugin_registry_url}/{plugin_id}/download")
+            download_url = f"{self.plugin_registry_url}/{plugin_id}/download"
+            print(f"Downloading plugin from: {download_url}")
+            response = requests.get(download_url)
             if response.status_code != 200:
+                print(f"Failed to download plugin {plugin_id}. Status code: {response.status_code}")
                 return False
+            print(f"Successfully downloaded plugin {plugin_id}")
 
             # Create temporary file
             plugin_zip = self.plugin_dir / f"{plugin_id}.zip"
+            print(f"Saving plugin zip to: {plugin_zip}")
             with open(plugin_zip, 'wb') as f:
                 f.write(response.content)
 
             # Extract plugin
+            extract_path = self.plugin_dir / plugin_id
+            print(f"Extracting plugin to: {extract_path}")
             with zipfile.ZipFile(plugin_zip) as zf:
-                zf.extractall(self.plugin_dir / plugin_id)
+                zf.extractall(extract_path)
 
             # Cleanup
+            print(f"Removing temporary zip file: {plugin_zip}")
             plugin_zip.unlink()
-            
+
             # Reload plugins
+            print(f"Reloading plugins after installation of {plugin_id}")
             self.load_plugins()
+
+            print(f"Plugin {plugin_id} installed successfully!")
             return True
+
         except Exception as e:
             print(f"Error installing plugin {plugin_id}: {e}")
             return False
+
 
     def uninstall_plugin(self, plugin_id: str) -> bool:
         """Uninstall a plugin"""

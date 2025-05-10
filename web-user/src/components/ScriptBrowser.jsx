@@ -122,7 +122,7 @@ const ScriptBrowser = () => {
   };
 
   return (
-    <div maxWidth="lg" sx={{ py: 4 }} className='bg-black'>
+    <div sx={{ py: 4 }} className='bg-black h-screen pt-20 px-10'>
       <br />
       <Typography variant="h4" gutterBottom className='text-white'>
         Script Browser
@@ -274,7 +274,7 @@ const ScriptBrowser = () => {
               <Typography variant="subtitle1" gutterBottom>
                 Requirements:
               </Typography>
-              <Box component="pre" sx={{ bgcolor: 'grey.100', p: 2, borderRadius: 1 }}>
+              <Box component="pre" sx={{ bgcolor: 'grey.700', p: 2, borderRadius: 1 }}>
                 {selectedScript.requirements.join('\n')}
               </Box>
             </DialogContent>

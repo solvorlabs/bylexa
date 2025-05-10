@@ -4,31 +4,31 @@ const Plugin = require('../models/Plugin');
 const multer = require('multer');
 const { authMiddleware } = require('../controllers/authControllers');
 const fs = require('fs');
+const path = require('path');
 
-// Configure multer for file uploads
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        const uploadDir = 'uploads/plugins';
-        // Create directory if it doesn't exist
-        if (!fs.existsSync(uploadDir)) {
-            fs.mkdirSync(uploadDir, { recursive: true });
-        }
-        cb(null, uploadDir);
-    },
-    filename: function (req, file, cb) {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, file.fieldname + '-' + uniqueSuffix + '-' + file.originalname);
-    }
-});
-
+// Configure multer for memory storage
+const storage = multer.memoryStorage();
 const upload = multer({ 
     storage: storage,
-    fileFilter: function (req, file, cb) {
-        // Accept only .py files or other specific extensions you want to allow
-        if (!file.originalname.match(/\.(py|js|json)$/)) {
-            return cb(new Error('Only .py, .js, and .json files are allowed!'), false);
+    fileFilter: (req, file, cb) => {
+        // Accept common zip MIME types and check file extension
+        const allowedMimeTypes = [
+            'application/zip',
+            'application/x-zip-compressed',
+            'application/octet-stream'
+        ];
+        
+        const isZipMime = allowedMimeTypes.includes(file.mimetype);
+        const isZipExtension = file.originalname.toLowerCase().endsWith('.zip');
+
+        if (isZipMime || isZipExtension) {
+            cb(null, true);
+        } else {
+            cb(new Error(`Invalid file type. Expected .zip file, got ${file.mimetype}`));
         }
-        cb(null, true);
+    },
+    limits: {
+        fileSize: 5 * 1024 * 1024 // 5MB limit
     }
 });
 
@@ -43,12 +43,12 @@ router.get('/registry', async (req, res) => {
                 $or: [
                     { name: { $regex: searchQuery, $options: 'i' } },
                     { description: { $regex: searchQuery, $options: 'i' } },
-                    { keywords: { $regex: searchQuery, $options: 'i' } }
+                    { keywords: { $in: [new RegExp(searchQuery, 'i')] } }
                 ]
             };
         }
 
-        const plugins = await Plugin.find(query).select('-main_file');
+        const plugins = await Plugin.find(query).select('-plugin_file');
         res.json({ plugins });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -58,7 +58,7 @@ router.get('/registry', async (req, res) => {
 // Get plugin details
 router.get('/registry/:id', async (req, res) => {
     try {
-        const plugin = await Plugin.findById(req.params.id).select('-main_file');
+        const plugin = await Plugin.findById(req.params.id).select('-plugin_file');
         if (!plugin) {
             return res.status(404).json({ error: 'Plugin not found' });
         }
@@ -72,21 +72,25 @@ router.get('/registry/:id', async (req, res) => {
 router.get('/registry/:id/download', async (req, res) => {
     try {
         const plugin = await Plugin.findById(req.params.id);
-        if (!plugin) {
-            return res.status(404).json({ error: 'Plugin not found' });
+        if (!plugin || !plugin.plugin_file) {
+            return res.status(404).json({ error: 'Plugin not found or plugin file missing' });
         }
 
         // Increment download count
         plugin.downloads += 1;
         await plugin.save();
 
-        res.json({
-            name: plugin.name,
-            main_file: plugin.main_file,
-            config: plugin.config,
-            requirements: plugin.requirements
+        // Set headers for zip file download
+        res.set({
+            'Content-Type': 'application/zip',
+            'Content-Disposition': `attachment; filename="${plugin.name}-${plugin.version}.zip"`,
+            'Content-Length': plugin.plugin_file.length
         });
+
+        // Send the zip file
+        res.send(plugin.plugin_file);
     } catch (error) {
+        console.error('Error downloading plugin:', error);
         res.status(500).json({ error: error.message });
     }
 });
@@ -94,10 +98,16 @@ router.get('/registry/:id/download', async (req, res) => {
 // Submit new plugin (requires authentication)
 router.post('/registry', authMiddleware, upload.single('plugin_file'), async (req, res) => {
     try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'Plugin file is required' });
+        }
+
         const pluginData = {
             ...req.body,
-            user_id: req.user._id,
-            author: req.user.email
+            plugin_file: req.file.buffer,
+            plugin_file_name: req.file.originalname,
+            author: req.user.email,
+            main_file: req.body.main_file || 'main.py'  // Add default if not provided
         };
 
         // Parse arrays that come as strings
@@ -107,21 +117,18 @@ router.post('/registry', authMiddleware, upload.single('plugin_file'), async (re
         if (typeof req.body.keywords === 'string') {
             pluginData.keywords = JSON.parse(req.body.keywords);
         }
-
-        if (req.file) {
-            pluginData.main_file = req.file.path;
+        if (typeof req.body.config === 'string') {
+            pluginData.config = JSON.parse(req.body.config);
         }
 
         const plugin = new Plugin(pluginData);
         await plugin.save();
-        res.status(201).json(plugin);
+
+        // Send response without the plugin file
+        const response = plugin.toObject();
+        delete response.plugin_file;
+        res.status(201).json(response);
     } catch (error) {
-        // Clean up uploaded file if there's an error
-        if (req.file) {
-            fs.unlink(req.file.path, (err) => {
-                if (err) console.error('Error deleting file:', err);
-            });
-        }
         res.status(500).json({ error: error.message });
     }
 });
@@ -161,47 +168,34 @@ router.get('/user', authMiddleware, async (req, res) => {
 // Update plugin
 router.put('/registry/:id', authMiddleware, upload.single('plugin_file'), async (req, res) => {
     try {
-        const plugin = await Plugin.findOne({ 
-            _id: req.params.id, 
-            user_id: req.user._id 
-        });
-        
+        const plugin = await Plugin.findById(req.params.id);
         if (!plugin) {
-            return res.status(404).json({ error: 'Plugin not found or unauthorized' });
+            return res.status(404).json({ error: 'Plugin not found' });
         }
 
         const updateData = { ...req.body };
 
-        // Parse arrays that come as strings
-        if (typeof req.body.requirements === 'string') {
-            updateData.requirements = JSON.parse(req.body.requirements);
-        }
-        if (typeof req.body.keywords === 'string') {
-            updateData.keywords = JSON.parse(req.body.keywords);
+        // Update file if provided
+        if (req.file) {
+            updateData.plugin_file = req.file.buffer;
+            updateData.plugin_file_name = req.file.originalname;
         }
 
-        if (req.file) {
-            // Delete old file if it exists
-            if (plugin.main_file) {
-                fs.unlink(plugin.main_file, (err) => {
-                    if (err) console.error('Error deleting old file:', err);
-                });
+        // Parse JSON strings
+        ['requirements', 'keywords', 'config'].forEach(field => {
+            if (typeof req.body[field] === 'string') {
+                updateData[field] = JSON.parse(req.body[field]);
             }
-            updateData.main_file = req.file.path;
-        }
+        });
 
         Object.assign(plugin, updateData);
-        plugin.updated_at = Date.now();
         await plugin.save();
-        
-        res.json(plugin);
+
+        // Send response without the plugin file
+        const response = plugin.toObject();
+        delete response.plugin_file;
+        res.json(response);
     } catch (error) {
-        // Clean up uploaded file if there's an error
-        if (req.file) {
-            fs.unlink(req.file.path, (err) => {
-                if (err) console.error('Error deleting file:', err);
-            });
-        }
         res.status(500).json({ error: error.message });
     }
 });
@@ -216,13 +210,6 @@ router.delete('/registry/:id', authMiddleware, async (req, res) => {
         
         if (!plugin) {
             return res.status(404).json({ error: 'Plugin not found or unauthorized' });
-        }
-        
-        // Clean up plugin file
-        if (plugin.main_file) {
-            fs.unlink(plugin.main_file, (err) => {
-                if (err) console.error('Error deleting plugin file:', err);
-            });
         }
         
         res.json({ message: 'Plugin deleted successfully' });
@@ -250,4 +237,34 @@ router.post('/registry/:id/toggle', authMiddleware, async (req, res) => {
     }
 });
 
-module.exports = router; 
+// Enable plugin
+router.post('/registry/:id/enable', authMiddleware, async (req, res) => {
+    try {
+        const plugin = await Plugin.findById(req.params.id);
+        if (!plugin) {
+            return res.status(404).json({ error: 'Plugin not found' });
+        }
+        plugin.enabled = true;
+        await plugin.save();
+        res.json({ enabled: plugin.enabled });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Disable plugin
+router.post('/registry/:id/disable', authMiddleware, async (req, res) => {
+    try {
+        const plugin = await Plugin.findById(req.params.id);
+        if (!plugin) {
+            return res.status(404).json({ error: 'Plugin not found' });
+        }
+        plugin.enabled = false;
+        await plugin.save();
+        res.json({ enabled: plugin.enabled });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+module.exports = router;

@@ -9,6 +9,9 @@ from .plugins import plugin_manager
 import requests
 from urllib.parse import urljoin
 import webbrowser
+import logging
+
+logger = logging.getLogger(__name__)
 
 class ConfigGUI:
     def __init__(self):
@@ -331,50 +334,76 @@ class ConfigGUI:
 
     def refresh_plugins(self):
         """Refresh both installed and available plugins"""
+        logger.info("Refreshing plugin lists...")
+
         # Clear existing items
         for tree in (self.installed_tree, self.available_tree):
             for item in tree.get_children():
                 tree.delete(item)
 
         # Load installed plugins
+        logger.info("Loading installed plugins...")
         for plugin_id, plugin in plugin_manager.plugins.items():
             metadata = plugin['metadata']
             status = "Enabled" if plugin['enabled'] else "Disabled"
             self.installed_tree.insert('', 'end', values=(
-                metadata['name'],
+                metadata.get('name', 'Unknown'),
                 metadata.get('version', 'N/A'),
                 status,
                 metadata.get('description', 'N/A')
             ))
 
         # Load available plugins
-        for plugin in plugin_manager.get_available_plugins():
-            # Check using plugin name instead of id
-            plugin_name = plugin.get('name')
-            if plugin_name and not any(p['metadata']['name'] == plugin_name 
-                                     for p in plugin_manager.plugins.values()):
-                self.available_tree.insert('', 'end', values=(
-                    plugin_name,
-                    plugin.get('version', 'N/A'),
-                    'Not Installed',
-                    plugin.get('description', 'N/A')
-                ))
+        logger.info("Loading available plugins...")
+        available_plugins = plugin_manager.get_available_plugins()  # Returns list directly
+        print(f"Available plugins: {available_plugins}")  # Debug log
+        if available_plugins:  # Check if we got any plugins
+            for plugin in available_plugins:
+                plugin_id = plugin.get('_id')
+                if not plugin_id:
+                    logger.warning("Plugin ID is missing")
+                    continue
+                # Check if plugin is already installed
+                plugin_name = plugin.get('name')
+                # Check if plugin is not already installed
+                if plugin_name and not any(p['metadata']['name'] == plugin_name 
+                                        for p in plugin_manager.plugins.values()):
+                    self.available_tree.insert('', 'end', values=(
+                        plugin_id,
+                        plugin_name,
+                        plugin.get('version', 'N/A'),
+                        'Not Installed',
+                        plugin.get('description', 'N/A')
+                    ), tags=(plugin.get('_id', plugin_id),))  # Add ID as tag for installation
+        else:
+            logger.warning("No available plugins found")
 
     def install_plugin(self):
         """Install selected plugin"""
+        print("Install plugin triggered")  # Debug log
+
         selection = self.available_tree.selection()
         if not selection:
+            print("No plugin selected")
             messagebox.showwarning("Warning", "Please select a plugin to install")
             return
 
         item = self.available_tree.item(selection[0])
-        plugin_name = item['values'][0]
-        
-        if plugin_manager.install_plugin(plugin_name):
+        plugin_id = item['tags'][0]  # Get plugin ID from tags
+        plugin_name = item['values'][1]  # Get plugin name from values
+        print(f"Selected plugin: {plugin_name}")
+        print(f"Plugin item values: {item['values']}")  # Debugging line
+
+        print(f"Attempting to install plugin: {plugin_name}")
+        if plugin_manager.install_plugin(plugin_id):
+            print(f"Plugin {plugin_name} installed successfully")
             messagebox.showinfo("Success", f"Plugin {plugin_name} installed successfully")
             self.refresh_plugins()
+            print("Plugin list refreshed")
         else:
+            print(f"Failed to install plugin {plugin_name}")
             messagebox.showerror("Error", f"Failed to install plugin {plugin_name}")
+
 
     def uninstall_plugin(self):
         """Uninstall selected plugin"""
@@ -439,6 +468,7 @@ class ConfigGUI:
         self.search_entry = ttk.Entry(search_frame)
         self.search_entry.pack(side='left', fill='x', expand=True, padx=5)
         ttk.Button(search_frame, text="Search", command=self.search_scripts).pack(side='left', padx=5)
+        ttk.Button(search_frame, text="Refresh", command=lambda: self.refresh_available_scripts()).pack(side='left', padx=5)
 
         # Split view for scripts
         paned = ttk.PanedWindow(self.script_browser_tab, orient='horizontal')
@@ -490,9 +520,14 @@ class ConfigGUI:
     def refresh_available_scripts(self, search_term: str = ""):
         """Refresh the list of available scripts"""
         try:
+            self.script_details.delete('1.0', tk.END)  # Clear details view
             params = {'q': search_term} if search_term else {}
             response = requests.get(self.script_registry_url, params=params)
-            scripts = response.json()['scripts']
+            
+            if response.status_code != 200:
+                raise Exception(f"Server returned status code {response.status_code}")
+                
+            scripts = response.json().get('scripts', [])
 
             # Clear existing items
             for item in self.scripts_tree.get_children():
@@ -500,12 +535,13 @@ class ConfigGUI:
 
             # Add scripts to treeview
             for script in scripts:
-                self.scripts_tree.insert('', 'end', values=(
-                    script['name'],
-                    script['author'],
-                    script['rating'],
-                    script['downloads']
-                ), tags=(script['id'],))
+                values = (
+                    script.get('name', 'N/A'),
+                    script.get('author', 'N/A'),
+                    script.get('rating', 0),
+                    script.get('downloads', 0)
+                )
+                self.scripts_tree.insert('', 'end', values=values, tags=(script.get('_id', ''),))
 
         except Exception as e:
             messagebox.showerror("Error", f"Failed to fetch scripts: {str(e)}")
@@ -514,33 +550,42 @@ class ConfigGUI:
         """Handle script selection"""
         selection = self.scripts_tree.selection()
         if not selection:
+            self.script_details.delete('1.0', tk.END)
             return
 
         try:
             script_id = self.scripts_tree.item(selection[0], 'tags')[0]
+            if not script_id:  # Check if script_id is empty
+                raise ValueError("Invalid script ID")
+
             response = requests.get(f"{self.script_registry_url}/{script_id}")
+            if response.status_code != 200:
+                raise Exception(f"Server returned status code {response.status_code}")
+
             script_details = response.json()
+            if not script_details:
+                raise ValueError("No script details received")
 
             # Update details view
             self.script_details.delete('1.0', tk.END)
-            details_text = f"""Name: {script_details['name']}
-Author: {script_details['author']}
-Version: {script_details['version']}
-Rating: {script_details['rating']} ({script_details['num_ratings']} ratings)
-Downloads: {script_details['downloads']}
+            details_text = f"""Name: {script_details.get('name', 'N/A')}
+                            Author: {script_details.get('author', 'N/A')}
+                            Version: {script_details.get('version', 'N/A')}
+                            Rating: {script_details.get('rating', 0)} ({script_details.get('num_ratings', 0)} ratings)
+                            Downloads: {script_details.get('downloads', 0)}
 
-Description:
-{script_details['description']}
+                            Description: {script_details.get('description', 'No description available')}
 
-Requirements:
-{script_details['requirements']}
+                            Requirements: {', '.join(script_details.get('requirements', ['None']))}
 
-Keywords: {', '.join(script_details['keywords'])}
-"""
+                            Keywords: {', '.join(script_details.get('keywords', ['None']))}
+                            """
             self.script_details.insert('1.0', details_text)
 
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to fetch script details: {str(e)}")
+            self.script_details.delete('1.0', tk.END)
+            self.script_details.insert('1.0', f"Error loading script details: {str(e)}")
+            print(f"Error in on_script_select: {str(e)}")  # For debugging
 
     def install_selected_script(self):
         """Install the selected script"""
@@ -588,7 +633,7 @@ Keywords: {', '.join(script_details['keywords'])}
 
         try:
             script_id = self.scripts_tree.item(selection[0], 'tags')[0]
-            url = urljoin(self.script_registry_url, f"/{script_id}/source")
+            url = urljoin(self.script_registry_url, f"/api/scripts/registry/{script_id}/source")
             webbrowser.open(url)
         except Exception as e:
             messagebox.showerror("Error", f"Failed to open source view: {str(e)}")
@@ -602,7 +647,7 @@ Keywords: {', '.join(script_details['keywords'])}
 
         try:
             script_id = self.scripts_tree.item(selection[0], 'tags')[0]
-            url = urljoin(self.script_registry_url, f"/{script_id}/docs")
+            url = urljoin(self.script_registry_url, f"/api/scripts/registry/{script_id}/docs")
             webbrowser.open(url)
         except Exception as e:
             messagebox.showerror("Error", f"Failed to open documentation: {str(e)}")

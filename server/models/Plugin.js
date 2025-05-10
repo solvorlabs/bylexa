@@ -30,6 +30,18 @@ const PluginSchema = new mongoose.Schema({
         type: [String],
         default: []
     },
+    main_file: {
+        type: String,
+        required: true
+    },
+    plugin_file: {
+        type: Buffer,  // Store the plugin zip file as binary data
+        required: true
+    },
+    plugin_file_name: {
+        type: String,
+        required: true
+    },
     keywords: {
         type: [String],
         default: []
@@ -58,4 +70,8 @@ const PluginSchema = new mongoose.Schema({
     }
 });
 
+PluginSchema.pre('save', function(next) {
+    this.updated_at = Date.now();
+    next();
+});
 module.exports = mongoose.model('Plugin', PluginSchema); 
