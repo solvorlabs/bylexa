@@ -1,2 +1,2 @@
 [console_scripts]
-bylexa = bylexa.cli:main
+bylexa = bylexa.new_cli:main

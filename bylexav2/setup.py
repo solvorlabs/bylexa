@@ -41,7 +41,7 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'bylexa=bylexa.new_cli:main',
+            'bylexa=bylexa.cli:main',
         ],
     },
     python_requires='>=3.6',
