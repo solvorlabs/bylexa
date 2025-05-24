@@ -1,0 +1,20 @@
+{
+  "name": "MyTestPlugin Example Flow",
+  "description": "Example automation flow for MyTestPlugin",
+  "trigger_phrases": [
+    "start MyTestPlugin flow",
+    "run MyTestPlugin automation"
+  ],
+  "steps": [
+    {
+      "action": "say_hello",
+      "parameters": {
+        "message": "Flow started!"
+      }
+    },
+    {
+      "action": "get_status",
+      "parameters": {}
+    }
+  ]
+}

@@ -24,7 +24,7 @@ from .config import load_app_configs, load_token
 from . import plugin_dev_kit as plugin_manager 
 class BylexaOrchestrator:
     """
-    Main orchestrator for the Bylexa system that initializes and manages
+    Main orchestrator for the Bylexa system that initializes and manages 
     all components and handles the lifecycle of the application.
     """
     

@@ -55,16 +55,7 @@ class DialogManager:
         self.context = DialogContext()
     
     def handle_response(self, user_input: str, parser_result: Dict) -> Dict:
-        """
-        Process user input based on current dialog state.
-        
-        Args:
-            user_input: The user's input text
-            parser_result: The result from IntentParser
-            
-        Returns:
-            Dict with response and updated context
-        """
+        """Process user input based on current dialog state."""
         logger.info(f"Handling response in state: {self.context.state}")
         logger.info(f"Parser result: {parser_result}")
         
@@ -79,6 +70,10 @@ class DialogManager:
             return self._resolve_ambiguity(user_input)
         elif self.context.state == "missing_params":
             return self._collect_parameters(user_input)
+        elif self.context.state == "clear":
+            # Reset state and handle as initial
+            self.context.reset()
+            return self._handle_initial_state(parser_result)
         else:
             # Unknown state, reset to initial
             self.context.reset()

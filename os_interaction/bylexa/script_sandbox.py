@@ -63,10 +63,15 @@ class RestrictedEnvironment:
         # Replace __import__ with restricted version
         builtins.__import__ = self._restricted_import
         
-        # Filter builtins
-        for name in list(builtins.__dict__.keys()):
+        # Filter builtins - Fixed version
+        builtin_names = list(builtins.__dict__.keys())
+        for name in builtin_names:
             if name not in self.allowed_builtins and not name.startswith('__'):
-                delattr(builtins, name)
+                try:
+                    delattr(builtins, name)
+                except AttributeError:
+                    # Skip if attribute doesn't exist or can't be deleted
+                    pass
         
         return self
     

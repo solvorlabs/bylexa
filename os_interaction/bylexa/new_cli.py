@@ -8,7 +8,7 @@ from pathlib import Path
 import logging
 from typing import Dict, Any, Optional
 
-from .token import login as do_login
+from .my_token import login as do_login
 from .websocket_client import start_client
 from .config_gui import run_gui
 from .bylexa_orchestrator import get_bylexa_orchestrator
@@ -114,7 +114,7 @@ def search(query):
             if 'remote_only' in script and script['remote_only']:
                 print("   [Available in remote registry]")
             print()
-    
+
     except Exception as e:
         logger.error(f"Error searching scripts: {str(e)}")
         sys.exit(1)

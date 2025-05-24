@@ -1,0 +1,12 @@
+{
+  "name": "MyTestPlugin",
+  "version": "1.0.0",
+  "description": "Description for MyTestPlugin",
+  "author": "Your Name",
+  "keywords": [
+    "automation",
+    "utility"
+  ],
+  "requirements": [],
+  "bylexa_version": ">=1.0.0"
+}

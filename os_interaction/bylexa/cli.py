@@ -1,6 +1,6 @@
 # cli.py
 import click
-from .token import login as do_login
+from .my_token import login as do_login
 from .websocket_client import start_client
 from .config_gui import run_gui
 

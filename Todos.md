@@ -15,3 +15,7 @@
 
 ## Tasks (14-10-2024)
 - add a narrator feel to the os interactor that cites the action it is performing
+
+Imp Links
+https://chat.deepseek.com/a/chat/s/1ff135fd-cc1f-4c4a-a7a1-227411ea0173
+https://claude.ai/chat/7e7258dc-ae1c-4f0a-97ef-469b83bc6fc1
