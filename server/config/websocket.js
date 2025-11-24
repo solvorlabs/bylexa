@@ -10,6 +10,9 @@ const clients = {};
 // Store rooms and their participants
 const rooms = {};
 
+// Store machine information for each client
+const machineInfo = {};
+
 // Setup the WebSocket server
 const setupWebSocket = (server) => {
   const wss = new WebSocket.Server({ server, path: '/ws' });
@@ -28,7 +31,7 @@ const setupWebSocket = (server) => {
     }
 
     if (email) {
-      clients[email] = { ws, room: null };
+      clients[email] = { ws, room: null, machineId: null };
       console.log(`User with email ${email} connected`);
 
       ws.on('message', async (message) => {
@@ -37,6 +40,10 @@ const setupWebSocket = (server) => {
           console.log('Received message:', parsedMessage);
 
           switch (parsedMessage.action) {
+            case 'register_machine':
+              handleMachineRegistration(email, parsedMessage, ws);
+              break;
+
             case 'join_room':
               handleJoinRoom(email, parsedMessage, ws);
               break;
@@ -72,6 +79,10 @@ const setupWebSocket = (server) => {
               handleNotebookResult(email, parsedMessage);
               break;
 
+            case 'list_machines':
+              handleListMachines(email, parsedMessage, ws);
+              break;
+
             case 'save_notebook':
               // Forward save request to the executing client
               const roomCode = clients[email]?.room;
@@ -101,6 +112,11 @@ const setupWebSocket = (server) => {
       ws.on('close', () => {
         console.log(`User with email ${email} disconnected`);
         leaveRoom(email);
+        // Remove machine info if exists
+        const machineId = clients[email]?.machineId;
+        if (machineId && machineInfo[machineId]) {
+          delete machineInfo[machineId];
+        }
         delete clients[email];
         console.log('Current clients:', Object.keys(clients));
         console.log('Current rooms:', Object.keys(rooms));
@@ -137,6 +153,76 @@ const sendCommandToAgent = (userEmail, command) => {
   }
 };
 
+// Handler for machine registration
+const handleMachineRegistration = (email, message, ws) => {
+  const machineId = message.machine_id;
+  const machineData = message.machine_data || {};
+
+  if (machineId) {
+    machineInfo[machineId] = {
+      email: email,
+      machineId: machineId,
+      os: machineData.os || 'unknown',
+      platform: machineData.platform || 'unknown',
+      hostname: machineData.hostname || 'unknown',
+      cpu_count: machineData.cpu_count || 0,
+      memory_total: machineData.memory_total || 0,
+      memory_available: machineData.memory_available || 0,
+      capabilities: machineData.capabilities || [],
+      registered_at: new Date().toISOString()
+    };
+
+    clients[email].machineId = machineId;
+
+    console.log(`Machine registered: ${machineId} for user ${email}`);
+
+    ws.send(JSON.stringify({
+      action: 'machine_registered',
+      machine_id: machineId,
+      message: 'Machine successfully registered'
+    }));
+
+    // Notify room members if in a room
+    const roomCode = clients[email]?.room;
+    if (roomCode) {
+      broadcastToRoom(roomCode, email, {
+        action: 'machine_joined',
+        machine_id: machineId,
+        machine_data: machineInfo[machineId],
+        user: email
+      });
+    }
+  }
+};
+
+// Handler for listing machines in a room
+const handleListMachines = (email, message, ws) => {
+  const roomCode = clients[email]?.room;
+  if (!roomCode) {
+    ws.send(JSON.stringify({
+      error: 'You must be in a room to list machines'
+    }));
+    return;
+  }
+
+  // Get all machines in the room
+  const roomMachines = [];
+  if (rooms[roomCode]) {
+    rooms[roomCode].forEach((userEmail) => {
+      const machineId = clients[userEmail]?.machineId;
+      if (machineId && machineInfo[machineId]) {
+        roomMachines.push(machineInfo[machineId]);
+      }
+    });
+  }
+
+  ws.send(JSON.stringify({
+    action: 'machines_list',
+    room_code: roomCode,
+    machines: roomMachines
+  }));
+};
+
 const handleNotebookExecution = (email, message) => {
   const roomCode = clients[email]?.room;
   if (!roomCode) {
@@ -146,13 +232,33 @@ const handleNotebookExecution = (email, message) => {
     return;
   }
 
-  // Forward the execution request to all clients in the room
-  broadcastToRoom(roomCode, email, {
-    action: 'notebook_execute',
-    code: message.code,
-    cell_id: message.cell_id,
-    sender: email
-  });
+  const targetMachines = message.target_machines || [];
+
+  // If specific machines are targeted, send only to those
+  if (targetMachines && targetMachines.length > 0) {
+    targetMachines.forEach((machineId) => {
+      if (machineInfo[machineId]) {
+        const targetEmail = machineInfo[machineId].email;
+        const clientSocket = clients[targetEmail]?.ws;
+        if (clientSocket && clientSocket.readyState === WebSocket.OPEN) {
+          clientSocket.send(JSON.stringify({
+            action: 'notebook_execute',
+            code: message.code,
+            cell_id: message.cell_id,
+            sender: email
+          }));
+        }
+      }
+    });
+  } else {
+    // Forward the execution request to all clients in the room
+    broadcastToRoom(roomCode, email, {
+      action: 'notebook_execute',
+      code: message.code,
+      cell_id: message.cell_id,
+      sender: email
+    });
+  }
 };
 
 const handleNotebookResult = (email, message) => {
@@ -203,11 +309,33 @@ const handleBroadcast = (email, message) => {
     return;
   }
 
-  broadcastToRoom(roomCode, email, {
-    action: 'broadcast',
-    message: message.command,
-    sender: email
-  });
+  const targetMachines = message.target_machines || [];
+
+  // If specific machines are targeted, send only to those
+  if (targetMachines && targetMachines.length > 0) {
+    console.log(`Broadcasting to specific machines: ${targetMachines.join(', ')}`);
+    targetMachines.forEach((machineId) => {
+      if (machineInfo[machineId]) {
+        const targetEmail = machineInfo[machineId].email;
+        const clientSocket = clients[targetEmail]?.ws;
+        if (clientSocket && clientSocket.readyState === WebSocket.OPEN) {
+          clientSocket.send(JSON.stringify({
+            action: 'broadcast',
+            message: message.command,
+            sender: email,
+            machine_id: machineId
+          }));
+        }
+      }
+    });
+  } else {
+    // Broadcast to all in the room
+    broadcastToRoom(roomCode, email, {
+      action: 'broadcast',
+      message: message.command,
+      sender: email
+    });
+  }
 };
 
 const handleNotification = (email, message) => {
@@ -254,11 +382,34 @@ const handlePythonExecution = (email, message) => {
     return;
   }
 
-  broadcastToRoom(roomCode, email, {
-    action: 'python_execute',
-    code: message.code,
-    sender: email
-  });
+  const targetMachines = message.target_machines || [];
+
+  // If specific machines are targeted, send only to those
+  if (targetMachines && targetMachines.length > 0) {
+    console.log(`Executing Python code on specific machines: ${targetMachines.join(', ')}`);
+    targetMachines.forEach((machineId) => {
+      if (machineInfo[machineId]) {
+        const targetEmail = machineInfo[machineId].email;
+        const clientSocket = clients[targetEmail]?.ws;
+        if (clientSocket && clientSocket.readyState === WebSocket.OPEN) {
+          clientSocket.send(JSON.stringify({
+            action: 'python_execute',
+            code: message.code,
+            sender: email,
+            machine_id: machineId
+          }));
+          console.log(`Sent Python execution to machine ${machineId} (${targetEmail})`);
+        }
+      }
+    });
+  } else {
+    // Broadcast to all machines in the room
+    broadcastToRoom(roomCode, email, {
+      action: 'python_execute',
+      code: message.code,
+      sender: email
+    });
+  }
 };
 
 const handleDirectMessage = (email, message) => {
