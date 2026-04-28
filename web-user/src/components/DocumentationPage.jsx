@@ -4,7 +4,7 @@ import React from 'react';
 
 const DocumentationPage = () => {
   return (
-    <div className='min-h-screen bg-gray-900 text-white px-8 py-12 '>
+    <div className='min-h-screen bg-gray-900 text-white px-8 py-12 mt-10 '>
       <div className='max-w-5xl mx-auto'>
         <h1 className="text-4xl font-bold mb-8 text-blue-400">Project Documentation: Integrating Voice Assistant with IoT Microcontroller</h1>
 
